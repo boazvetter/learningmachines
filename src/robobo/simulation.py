@@ -102,6 +102,12 @@ class SimulationRobobo(Robobo):
     def _vrep_set_joint_target_position(self, handle, position, opmode=vrep.simx_opmode_oneshot):
         return vrep.unwrap_vrep(vrep.simxSetJointTargetPosition(self._clientID, handle, position, opmode))
 
+    # def get_jointvelocity(self):
+    #     # res,velocity=simGetObjectFloatParameter(handle,2012)
+    #     # return res, velocity
+    #     # self._RightMotor AND self._LeftMotor
+    #     return vrep.unwrap_vrep(vrep.simGetObjectFloatParameter(self._RightMotor,2012))
+
     def spin(self):
         raise NotImplementedError("Not implemeted yet")
 
