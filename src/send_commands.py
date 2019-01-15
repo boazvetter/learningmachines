@@ -30,15 +30,15 @@ STATE_LABEL = ["Collision center", "Collision left", "Collision right", "No coll
 STATES = [0, 1, 2, 3]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
 ACTIONS = [0, 1, 2, 3]
-N_EPISODES = 1
+N_EPISODES = 1000
 EPISODE_LENGTH = 30
-STEP_SIZE=0.02
+STEP_SIZE=0.05
 DISCOUNT_RATE = 0.9
 
 
-def get_reward(left=0, right=0): # First get fitness at a single point in time
-    vsens = sum(rob.read_irs()) # Euclidian distance
-    return 1-vsens
+# def get_reward(left=0, right=0): # First get fitness at a single point in time
+    # vsens = sum(rob.read_irs()) # Euclidian distance
+    # return 0.5-vsens
     # left /= 100 # normalize
     # right /= 100 # normalize
     # fitness = (left+right) * (1-abs(left-right)) * (1-vsens)
@@ -47,6 +47,21 @@ def get_reward(left=0, right=0): # First get fitness at a single point in time
 #todo: normalizing is not correct? normalize the outcome instead?
 #todo: get_jointvelocity(self) from simulation.py instead of the current option?
 
+def get_reward(rob):
+    irs = rob.read_irs()
+    frontL = irs[4] if irs[4] is not False else 1.0
+    frontC = irs[5] if irs[5] is not False else 1.0
+    frontR = irs[6] if irs[6] is not False else 1.0
+    # print("Sensor values:", frontL, frontC, frontR)
+
+    collisions = (frontL < COLLISIONDIST) + (frontC < COLLISIONDIST) + (frontR < COLLISIONDIST)
+    # print("Collisions:", collisions)
+    if collisions == 0:
+        return 3
+    elif collisions == 1:
+        return -2
+    elif collisions > 1:
+        return -10
 def get_state(rob):
     # States: No colission, Near collision center, near collision right, near colission left
     ir = rob.read_irs()
@@ -85,20 +100,20 @@ def choose_random_action():
 def take_action(rob, action):
     if action == 0:
         print("Taking action 0")
-        rob.move(50,50,500) # forward
+        rob.move(30,30,400) # forward
     elif action == 1:
         print("Taking action 1")
-        rob.move(-50,-50,500) # backward
+        rob.move(-30,-30,400) # backward
     elif action == 2:
         print("Taking action 2")
-        rob.move(0,50,500) # left
+        rob.move(0,30,400) # left
     elif action == 3:
         print("Taking action 3")
-        rob.move(50,0,500) # right
+        rob.move(30,0,400) # right
 
-    time.sleep(0.5)
+    time.sleep(0.6)
 
-    r = get_reward()
+    r = get_reward(rob)
     new_s = get_state(rob)
     return r, new_s
 
@@ -106,28 +121,29 @@ def take_action(rob, action):
 
 
 if __name__ == "__main__":
-    rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
+    rob = robobo.SimulationRobobo(0).connect(address='10.69.17.138', port=19995)
 
-    try:
-        print("Stopping simulation")
-        rob.stop_world()
-        time.sleep(10)
-    except:
-        pass
+    # try:
+    #     print("Stopping simulation")
+    #     rob.stop_world()
+    #     time.sleep(10)
+    # except:
+    #     pass
     print("Playing simulation")
     rob.play_simulation()
     time.sleep(1)
 
     # Q-learning loop
-    q_values = np.ones([len(STATES), len(ACTIONS)]) * 10
+    q_values = np.ones([len(STATES), len(ACTIONS)]) * 10.0
     for episode in range(0,N_EPISODES):
         s = 3
         for step in range(0,EPISODE_LENGTH):
             a = choose_action(s, q_values)
             r, new_s = take_action(rob, a)
-            print("Old Q value for", s, a, ":", q_values[s][a])
+            print("Reward: ", r)
+            print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
             q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.argmax(q_values[new_s]) - q_values[s][a]))
-            print("New Q value for", s, a, ":", q_values[s][a])
+            print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
             s = new_s
 
     print("Stopping world")
