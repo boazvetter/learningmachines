@@ -201,6 +201,7 @@ def take_action(rob, action):
 
     r = get_reward(rob, left, right)
     new_s = get_state_hardware(rob)
+    new_s = get_state(rob)
     return r, new_s
 
 
