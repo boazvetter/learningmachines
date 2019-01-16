@@ -26,8 +26,8 @@ import numpy as np
 import sys
 
 COLLISIONDIST = 0.075 # Distance for collision
-STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back", 
-"Near Collision Center", "Near Collision Right", "Near Collision Left", 
+STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back",
+"Near Collision Center", "Near Collision Right", "Near Collision Left",
 "Near Collision Back", "No collision"]
 STATES = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
@@ -118,7 +118,7 @@ def get_state(rob):
         elif irs.index(min(irs)) == 6 or irs.index(min(irs)) == 7:
             state = 6
         elif irs.index(min(irs)) == 0 or irs.index(min(irs)) == 1 or irs.index(min(irs)) == 2:
-            state = 7        
+            state = 7
     else:
         state = 8
     return state
@@ -135,7 +135,7 @@ def get_state(rob):
 #             q[s][a] = q[s][a] + step_size * (r + discount_rate*np.argmax(q_values[new_s]) - q_values[s][a])
 #             s = new_s
 
-def choose_action(s, q_values, epsilon = 0.0):
+def choose_action(s, q_values, epsilon = 0.1):
     if np.random.random() < epsilon:
         return np.random.choice(ACTIONS)
     else:
@@ -155,13 +155,13 @@ def take_action(rob, action):
         #rob.move(-30,-30,400) # backward
     elif action == 2:
         print("Taking action 2")
-        left, right = 0, 30
+        left, right = -15, 15
         #rob.move(0,30,400) # left
     elif action == 3:
         print("Taking action 3")
-        left, right = 30, 0
+        left, right = 15, -15
         #rob.move(30,0,400) # right
-    rob.move(left,right,400)
+    rob.move(left,right,500)
     time.sleep(0.6)
 
     r = get_reward(rob, left, right)
@@ -173,16 +173,18 @@ def take_action(rob, action):
 
 if __name__ == "__main__":
     try:
-        rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
-
-        print("Playing simulation")
-        rob.play_simulation()
-        time.sleep(1)
+        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
 
         # Q-learning loop
-        q_values = np.ones([len(STATES), len(ACTIONS)]) * 100.0
+        q_values = np.ones([len(STATES), len(ACTIONS)]) * 0.0
+        return_per_episode = []
         for episode in range(0,N_EPISODES):
+            print("Playing simulation")
+            rob.play_simulation()
+            time.sleep(1)
+
             s = 3
+            episode_return = 0
             for step in range(0,EPISODE_LENGTH):
                 a = choose_action(s, q_values)
                 r, new_s = take_action(rob, a)
@@ -193,13 +195,16 @@ if __name__ == "__main__":
                 print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
                 print("Q values: \n", q_values)
                 s = new_s
+                episode_return += r
 
         # DEBUG
         # rob.move(80,100,5000)
         # print("State: ", get_state(rob), STATE_LABEL[get_state(rob)])
-        # print("Stopping world")
-        rob.stop_world()
-        time.sleep(10)
+            return_per_episode.append(episode_return)
+            print("---", return_per_episode, "---")
+            print("Stopping world")
+            rob.stop_world()
+            time.sleep(10)
 
     except KeyboardInterrupt:
         print('Interrupted')
