@@ -25,9 +25,11 @@ import random
 import numpy as np
 import sys
 
-COLLISIONDIST = 0.15 # Distance for collision
-STATE_LABEL = ["Collision center", "Collision left", "Collision right", "No collision"]
-STATES = [0, 1, 2, 3]
+COLLISIONDIST = 0.075 # Distance for collision
+STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back", 
+"Near Collision Center", "Near Collision Right", "Near Collision Left", 
+"Near Collision Back", "No collision"]
+STATES = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
 ACTIONS = [0, 1, 2, 3]
 N_EPISODES = 1000
@@ -95,17 +97,30 @@ def get_state(rob):
         if value is False:
             irs[i] = True
 
-    if min(irs) < COLLISIONDIST: # near collissions
+    print("irs from get_state: ", irs)
+    print("min irs", min(irs))
+    print("irs.index(min(irs))", irs.index(min(irs)))
+    if min(irs) < COLLISIONDIST: # Collissions
         if irs.index(min(irs)) == 5:
             state = 0
-        if irs.index(min(irs)) == 3 or irs.index(min(irs)) == 4:
+        elif irs.index(min(irs)) == 3 or irs.index(min(irs)) == 4:
             state = 1
-        if irs.index(min(irs)) == 6 or irs.index(min(irs)) == 7:
+        elif irs.index(min(irs)) == 6 or irs.index(min(irs)) == 7:
             state = 2
-        else:
-            state = 3 # Change this later - back IRS need to be added too
+        elif irs.index(min(irs)) == 0 or irs.index(min(irs)) == 1 or irs.index(min(irs)) == 2:
+            state = 3
+        return state
+    elif min(irs) < COLLISIONDIST*2: # Near collissions
+        if irs.index(min(irs)) == 5:
+            state = 4
+        elif irs.index(min(irs)) == 3 or irs.index(min(irs)) == 4:
+            state = 5
+        elif irs.index(min(irs)) == 6 or irs.index(min(irs)) == 7:
+            state = 6
+        elif irs.index(min(irs)) == 0 or irs.index(min(irs)) == 1 or irs.index(min(irs)) == 2:
+            state = 7        
     else:
-        state = 3
+        state = 8
     return state
 
 # def q_update(step_size=0.02, discount_rate = 0.9, epsilon = 0.1):
@@ -158,7 +173,7 @@ def take_action(rob, action):
 
 if __name__ == "__main__":
     try:
-        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
+        rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
 
         print("Playing simulation")
         rob.play_simulation()
@@ -179,7 +194,10 @@ if __name__ == "__main__":
                 print("Q values: \n", q_values)
                 s = new_s
 
-        print("Stopping world")
+        # DEBUG
+        # rob.move(80,100,5000)
+        # print("State: ", get_state(rob), STATE_LABEL[get_state(rob)])
+        # print("Stopping world")
         rob.stop_world()
         time.sleep(10)
 
