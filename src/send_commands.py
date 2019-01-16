@@ -22,8 +22,8 @@ import robobo
 import cv2
 import os
 import random
-import torch
 import numpy as np
+import sys
 
 COLLISIONDIST = 0.10 # Distance for collision
 STATE_LABEL = ["Collision center", "Collision left", "Collision right", "No collision"]
@@ -65,14 +65,13 @@ def get_reward(rob, left, right):
     if collisions == 0:
         vsens = 0
     elif collisions == 1:
-        vsens = 0.25
+        vsens = 2
     elif collisions == 2:
-        vsens = 0.5
+        vsens = 3
     elif collisions > 2:
-        vsens = 0.9
+        vsens = 5
 
-    # left /= 100 # normalize
-    # right /= 100 # normalize
+
     # irs = rob.read_irs()
     # for i, value in enumerate(irs):
     #     if value is False:
@@ -82,7 +81,10 @@ def get_reward(rob, left, right):
     #     vsens = min(irs)
     # else:
     #     vsens = 0
-
+    print("left, right from reward before normalize: ", left, right)
+    float(left) /= 100 # normalize
+    float(right) /= 100 # normalize
+    print("left, right from reward: ", left, right)
     reward = (left+right) * (1-abs(left-right)) * (1-vsens)
     print("reward = ", (left+right), "*", (1-abs(left-right)), "*", (1-vsens))
     return reward
@@ -155,28 +157,35 @@ def take_action(rob, action):
 
 
 if __name__ == "__main__":
-    rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
+    try:
+        rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
 
-    print("Playing simulation")
-    rob.stop_world()
-    time.sleep(10)
-    rob.play_simulation()
-    time.sleep(1)
+        print("Playing simulation")
+        rob.play_simulation()
+        time.sleep(1)
 
-    # Q-learning loop
-    q_values = np.ones([len(STATES), len(ACTIONS)]) * 10.0
-    for episode in range(0,N_EPISODES):
-        s = 3
-        for step in range(0,EPISODE_LENGTH):
-            a = choose_action(s, q_values)
-            r, new_s = take_action(rob, a)
+        # Q-learning loop
+        q_values = np.ones([len(STATES), len(ACTIONS)]) * 10.0
+        for episode in range(0,N_EPISODES):
+            s = 3
+            for step in range(0,EPISODE_LENGTH):
+                a = choose_action(s, q_values)
+                r, new_s = take_action(rob, a)
 
-            print("Reward: ", r)
-            print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
-            q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.argmax(q_values[new_s]) - q_values[s][a]))
-            print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
-            s = new_s
+                print("Reward: ", r)
+                print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
+                q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.argmax(q_values[new_s]) - q_values[s][a]))
+                print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
+                s = new_s
 
-    print("Stopping world")
-    rob.stop_world()
-    time.sleep(10)
+        print("Stopping world")
+        rob.stop_world()
+        time.sleep(10)
+
+    except KeyboardInterrupt:
+        print('Interrupted')
+        try:
+            rob.stop_world()
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
