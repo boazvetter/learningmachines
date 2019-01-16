@@ -74,7 +74,11 @@ class SimulationRobobo(Robobo):
         return self
 
     def _vrep_get_ping_time(self):
-        return vrep.unwrap_vrep(vrep.simxGetPingTime(self._clientID))
+        try:
+            ping = vrep.simxGetPingTime(self._clientID)
+            return vrep.unwrap_vrep(ping)
+        except:
+            print("Ping error")
 
     def _vrep_get_object_handle(self, name, opmode):
         return vrep.unwrap_vrep(vrep.simxGetObjectHandle(self._clientID, name, opmode))
