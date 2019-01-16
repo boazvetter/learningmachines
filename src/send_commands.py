@@ -47,33 +47,63 @@ DISCOUNT_RATE = 0.9
 #todo: normalizing is not correct? normalize the outcome instead?
 #todo: get_jointvelocity(self) from simulation.py instead of the current option?
 
-def get_reward(rob):
+def get_reward(rob, left, right):
     irs = rob.read_irs()
     frontL = irs[4] if irs[4] is not False else 1.0
     frontC = irs[5] if irs[5] is not False else 1.0
     frontR = irs[6] if irs[6] is not False else 1.0
+    backR = irs[0] if irs[0] is not False else 1.0
+    backC =  irs[1] if irs[1] is not False else 1.0
+    backL = irs[2] if irs[2] is not False else 1.0
     # print("Sensor values:", frontL, frontC, frontR)
 
+
+
     collisions = (frontL < COLLISIONDIST) + (frontC < COLLISIONDIST) + (frontR < COLLISIONDIST)
+    + (backR < COLLISIONDIST) + (backC < COLLISIONDIST) + (backL < COLLISIONDIST)
     # print("Collisions:", collisions)
     if collisions == 0:
-        return 3
+        vsens = 0
     elif collisions == 1:
-        return -2
-    elif collisions > 1:
-        return -10
+        vsens = 0.25
+    elif collisions == 2:
+        vsens = 0.5
+    elif collisions > 2:
+        vsens = 0.9
+
+    # left /= 100 # normalize
+    # right /= 100 # normalize
+    # irs = rob.read_irs()
+    # for i, value in enumerate(irs):
+    #     if value is False:
+    #         irs[i] = True
+
+    # if min(irs) < COLLISIONDIST:
+    #     vsens = min(irs)
+    # else:
+    #     vsens = 0
+
+    reward = (left+right) * (1-abs(left-right)) * (1-vsens)
+    print("reward = ", (left+right), "*", (1-abs(left-right)), "*", (1-vsens))
+    return reward
+
 def get_state(rob):
-    # States: No colission, Near collision center, near collision right, near colission left
-    ir = rob.read_irs()
-    if ir[5] < COLLISIONDIST:
-        state = 0
-    elif ir[2] < COLLISIONDIST*1.5:
-        state = 1
-    elif ir[7] < COLLISIONDIST*1.5:
-        state = 2
+    irs = rob.read_irs()
+    for i, value in enumerate(irs):
+        if value is False:
+            irs[i] = True
+
+    if min(irs) < COLLISIONDIST: # near collissions
+        if irs.index(min(irs)) == 5:
+            state = 0
+        if irs.index(min(irs)) == 3 or irs.index(min(irs)) == 4:
+            state = 1
+        if irs.index(min(irs)) == 6 or irs.index(min(irs)) == 7:
+            state = 2
+        else:
+            state = 3 # Change this later - back IRS need to be added too
     else:
         state = 3
-
     return state
 
 # def q_update(step_size=0.02, discount_rate = 0.9, epsilon = 0.1):
@@ -100,20 +130,24 @@ def choose_random_action():
 def take_action(rob, action):
     if action == 0:
         print("Taking action 0")
-        rob.move(30,30,400) # forward
+        left , right = 30, 30
+        #rob.move(30,30,400) # forward
     elif action == 1:
         print("Taking action 1")
-        rob.move(-30,-30,400) # backward
+        left, right = -30, -30
+        #rob.move(-30,-30,400) # backward
     elif action == 2:
         print("Taking action 2")
-        rob.move(0,30,400) # left
+        left, right = 0, 30
+        #rob.move(0,30,400) # left
     elif action == 3:
         print("Taking action 3")
-        rob.move(30,0,400) # right
-
+        left, right = 30, 0
+        #rob.move(30,0,400) # right
+    rob.move(left,right,400)
     time.sleep(0.6)
 
-    r = get_reward(rob)
+    r = get_reward(rob, left, right)
     new_s = get_state(rob)
     return r, new_s
 
@@ -121,15 +155,11 @@ def take_action(rob, action):
 
 
 if __name__ == "__main__":
-    rob = robobo.SimulationRobobo(0).connect(address='10.69.17.138', port=19995)
+    rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
 
-    # try:
-    #     print("Stopping simulation")
-    #     rob.stop_world()
-    #     time.sleep(10)
-    # except:
-    #     pass
     print("Playing simulation")
+    rob.stop_world()
+    time.sleep(10)
     rob.play_simulation()
     time.sleep(1)
 
@@ -140,6 +170,7 @@ if __name__ == "__main__":
         for step in range(0,EPISODE_LENGTH):
             a = choose_action(s, q_values)
             r, new_s = take_action(rob, a)
+
             print("Reward: ", r)
             print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
             q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.argmax(q_values[new_s]) - q_values[s][a]))
@@ -149,6 +180,3 @@ if __name__ == "__main__":
     print("Stopping world")
     rob.stop_world()
     time.sleep(10)
-
-
-#discretisize states + actions
