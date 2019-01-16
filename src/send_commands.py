@@ -26,9 +26,7 @@ import numpy as np
 import sys
 
 COLLISIONDIST = 0.075 # Distance for collision
-STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back",
-"Near Collision Center", "Near Collision Right", "Near Collision Left",
-"Near Collision Back", "No collision"]
+STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back", "Near Collision Center", "Near Collision Right", "Near Collision Left", "Near Collision Back", "No collision"]
 STATES = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
 ACTIONS = [0, 1, 2, 3]
@@ -123,6 +121,43 @@ def get_state(rob):
         state = 8
     return state
 
+
+def get_state_hardware(rob):
+    irs = rob.read_irs()
+    for i, value in enumerate(irs):
+        if value is False:
+            irs[i] = True
+
+    print("irs from get_state: ", irs)
+    # print("min irs", max(irs))
+    # print("irs.index(max(irs))", irs.index(max(irs)))
+    if max(irs) > 200: # Collissions
+        if irs.index(max(irs)) == 5:
+            state = 0
+        elif irs.index(max(irs)) == 3 or irs.index(max(irs)) == 4:
+            state = 1
+        elif irs.index(max(irs)) == 6 or irs.index(max(irs)) == 7:
+            state = 2
+        elif irs.index(max(irs)) == 0 or irs.index(max(irs)) == 1 or irs.index(max(irs)) == 2:
+            state = 3
+        print(STATE_LABEL[state])
+        return state
+    elif max(irs) > 60: # Near collissions
+        if irs.index(max(irs)) == 5:
+            state = 4
+        elif irs.index(max(irs)) == 3 or irs.index(max(irs)) == 4:
+            state = 5
+        elif irs.index(max(irs)) == 6 or irs.index(max(irs)) == 7:
+            state = 6
+        elif irs.index(max(irs)) == 0 or irs.index(max(irs)) == 1 or irs.index(max(irs)) == 2:
+            state = 7
+        print(STATE_LABEL[state])
+    else:
+        state = 8
+        print(STATE_LABEL[state])
+
+    return state
+
 # def q_update(step_size=0.02, discount_rate = 0.9, epsilon = 0.1):
 
 #     q_values = np.ones([num_states, num_actions]) * 10
@@ -162,10 +197,10 @@ def take_action(rob, action):
         left, right = 15, -15
         #rob.move(30,0,400) # right
     rob.move(left,right,500)
-    time.sleep(0.6)
+    time.sleep(0.2)
 
     r = get_reward(rob, left, right)
-    new_s = get_state(rob)
+    new_s = get_state_hardware(rob)
     return r, new_s
 
 
@@ -174,9 +209,19 @@ def take_action(rob, action):
 if __name__ == "__main__":
     try:
         rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
+        # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
 
         # Q-learning loop
         q_values = np.ones([len(STATES), len(ACTIONS)]) * 0.0
+        q_values = [ [ 0.0315,-0.03,1.18698907,0.],
+                     [ 0.0315,-0.0585, 0.71164229,0.33388875],
+                     [ -0.03, -0.0585, 1.24593788, 0.09],
+                     [ 1.061425, -0.03,0.54435207,0.],
+                     [ 0.61405052,0.,1.,0.],
+                     [ 0.74229056,-0.0585,1.,0.],
+                     [ 0.79851067,-0.03,1.,0.],
+                     [ 0.67220085,-0.0585,1.045,0.0855],
+                     [ 0.64840999,-0.06242587,0.0855,0.0855]]
         return_per_episode = []
         for episode in range(0,N_EPISODES):
             print("Playing simulation")
@@ -196,6 +241,7 @@ if __name__ == "__main__":
                 print("Q values: \n", q_values)
                 s = new_s
                 episode_return += r
+
 
         # DEBUG
         # rob.move(80,100,5000)
