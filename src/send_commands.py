@@ -25,7 +25,7 @@ import random
 import numpy as np
 import sys
 
-COLLISIONDIST = 0.10 # Distance for collision
+COLLISIONDIST = 0.15 # Distance for collision
 STATE_LABEL = ["Collision center", "Collision left", "Collision right", "No collision"]
 STATES = [0, 1, 2, 3]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
@@ -81,10 +81,10 @@ def get_reward(rob, left, right):
     #     vsens = min(irs)
     # else:
     #     vsens = 0
-    print("left, right from reward before normalize: ", left, right)
-    float(left) /= 100 # normalize
-    float(right) /= 100 # normalize
-    print("left, right from reward: ", left, right)
+    #print("left, right from reward before normalize: ", left, right)
+    left /= float(100) # normalize
+    right /= float(100) # normalize
+    #print("left, right from reward: ", left, right)
     reward = (left+right) * (1-abs(left-right)) * (1-vsens)
     print("reward = ", (left+right), "*", (1-abs(left-right)), "*", (1-vsens))
     return reward
@@ -120,7 +120,7 @@ def get_state(rob):
 #             q[s][a] = q[s][a] + step_size * (r + discount_rate*np.argmax(q_values[new_s]) - q_values[s][a])
 #             s = new_s
 
-def choose_action(s, q_values, epsilon = 0.1):
+def choose_action(s, q_values, epsilon = 0.0):
     if np.random.random() < epsilon:
         return np.random.choice(ACTIONS)
     else:
@@ -158,14 +158,14 @@ def take_action(rob, action):
 
 if __name__ == "__main__":
     try:
-        rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
+        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
 
         print("Playing simulation")
         rob.play_simulation()
         time.sleep(1)
 
         # Q-learning loop
-        q_values = np.ones([len(STATES), len(ACTIONS)]) * 10.0
+        q_values = np.ones([len(STATES), len(ACTIONS)]) * 100.0
         for episode in range(0,N_EPISODES):
             s = 3
             for step in range(0,EPISODE_LENGTH):
@@ -176,6 +176,7 @@ if __name__ == "__main__":
                 print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
                 q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.argmax(q_values[new_s]) - q_values[s][a]))
                 print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
+                print("Q values: \n", q_values)
                 s = new_s
 
         print("Stopping world")
