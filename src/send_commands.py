@@ -24,6 +24,7 @@ import os
 import random
 import numpy as np
 import sys
+import copy
 
 COLLISIONDIST = 0.075 # Distance for collision
 STATE_LABEL = ["Collision center", "Collision right", "Collision left", "Collision back", "Near Collision Center", "Near Collision Right", "Near Collision Left", "Near Collision Back", "No collision"]
@@ -31,8 +32,8 @@ STATES = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 ACTION_LABEL = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
 ACTIONS = [0, 1, 2, 3]
 N_EPISODES = 1000
-EPISODE_LENGTH = 30
-STEP_SIZE=0.05
+EPISODE_LENGTH = 60
+STEP_SIZE=0.5
 DISCOUNT_RATE = 0.9
 
 
@@ -176,9 +177,6 @@ def choose_action(s, q_values, epsilon = 0.1):
     else:
         return np.argmax(q_values[s])
 
-def choose_random_action():
-    return np.random.choice(ACTIONS)
-
 def take_action(rob, action):
     if action == 0:
         print("Taking action 0")
@@ -205,6 +203,13 @@ def take_action(rob, action):
     return r, new_s
 
 
+def update_highscore():
+    if return_per_episode[-1] == max(return_per_episode):
+        print("NEW HIGHSCORE!")
+        return True
+    else:
+        print("No new highscore")
+        return False
 
 
 if __name__ == "__main__":
@@ -213,17 +218,9 @@ if __name__ == "__main__":
         # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
 
         # Q-learning loop
-        q_values = np.ones([len(STATES), len(ACTIONS)]) * 0.0
-        q_values = [ [ 0.0315,-0.03,1.18698907,0.],
-                     [ 0.0315,-0.0585, 0.71164229,0.33388875],
-                     [ -0.03, -0.0585, 1.24593788, 0.09],
-                     [ 1.061425, -0.03,0.54435207,0.],
-                     [ 0.61405052,0.,1.,0.],
-                     [ 0.74229056,-0.0585,1.,0.],
-                     [ 0.79851067,-0.03,1.,0.],
-                     [ 0.67220085,-0.0585,1.045,0.0855],
-                     [ 0.64840999,-0.06242587,0.0855,0.0855]]
+        q_values = np.ones([len(STATES), len(ACTIONS)]) * 2.0
         return_per_episode = []
+        q_values_highscore = []
         for episode in range(0,N_EPISODES):
             print("Playing simulation")
             rob.play_simulation()
@@ -248,7 +245,13 @@ if __name__ == "__main__":
         # rob.move(80,100,5000)
         # print("State: ", get_state(rob), STATE_LABEL[get_state(rob)])
             return_per_episode.append(episode_return)
-            print("---", return_per_episode, "---")
+            print("--- Return per episode: ", return_per_episode, "---")
+
+            if update_highscore() == True:
+                q_values_highscore = copy.deepcopy(q_values)
+
+            print("------------ q_values_highscore --------- = \n", q_values_highscore)                   
+
             print("Stopping world")
             rob.stop_world()
             time.sleep(10)
@@ -260,3 +263,55 @@ if __name__ == "__main__":
             sys.exit(0)
         except SystemExit:
             os._exit(0)
+
+
+'''
+tonights run
+q values latest:
+ [[ 1.37186483 -0.59999921  2.31960774  1.75802191]
+ [ 1.90216479 -0.59999994  2.16551051  2.15707724]
+ [ 1.17778567 -0.58069664  1.83677359  1.65232178]
+ [ 1.18873665 -0.37358784  0.          0.        ]
+ [ 1.57095874 -0.27578395  0.          0.22144549]
+ [ 1.75103703 -0.29199475  0.          0.22970482]
+ [ 1.02598515 -0.03        0.          0.15838875]
+ [ 0.86205469 -0.30739501  0.04169621  0.        ]
+ [ 0.64449579 -0.46799716  0.30664209  0.03396182]]
+
+
+e-greedy e=0.1, alpha = 0.05, runtime=60, ~700 runs
+q values highest:
+ [[-0.03       -0.03        1.45358028  0.        ]
+ [ 0.25403141  0.0315      1.04253518  0.        ]
+ [-0.0135     -0.0585      1.43584427  0.0855    ]
+ [ 0.78908288 -0.11129625  0.          0.        ]
+ [ 0.27146288  0.          0.          0.        ]
+ [ 1.22604787  0.          0.          0.15046931]
+ [ 1.14847034  0.          0.          0.        ]
+ [ 0.89406021 -0.0585      0.09        0.        ]
+ [ 0.58095798 -0.09907866  0.50635005  0.09      ]]
+
+
+BEST Q VALUES FROM YESTERDAY, :
+q_values = [ [ 0.0315,-0.03,1.18698907,0.],
+             [ 0.0315,-0.0585, 0.71164229,0.33388875],
+             [ -0.03, -0.0585, 1.24593788, 0.09],
+             [ 1.061425, -0.03,0.54435207,0.],
+             [ 0.61405052,0.,1.,0.],
+             [ 0.74229056,-0.0585,1.,0.],
+             [ 0.79851067,-0.03,1.,0.],
+             [ 0.67220085,-0.0585,1.045,0.0855],
+             [ 0.64840999,-0.06242587,0.0855,0.0855]]
+
+
+Optimistic, 0.1 epsilon greedy after 20 minutes of training
+ [[ 1.4         0.05        1.90241699  1.86032877]
+ [ 1.075       1.075       2.062854    1.8778656 ]
+ [ 0.95        0.7         1.87794003  0.56022429]
+ [ 0.9625      1.3953125   0.82316866  1.29725872]
+ [ 2.0375      1.4125      0.725       1.175     ]
+ [ 1.9         1.646875    1.55542736  1.4875    ]
+ [ 1.8859375   0.63125     1.4         2.44101548]
+ [ 1.76439362  0.65117188  0.59925384  2.48480225]
+ [ 0.77022061  1.20341797  0.89995206  2.69439332]]
+'''
