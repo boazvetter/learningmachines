@@ -32,15 +32,14 @@ DISCOUNT_RATE = 0.9
 
 
 
-
-''' complex reward function
-irs = rob.read_irs()
-irs = [ ir < COLLISIONDIST if ir != False else 0.0 for ir in irs ]
-collisions = sum(irs)
-left /= float(100) # normalize
-right /= float(100) # normalize
-reward = (left+right) - collisions
-'''
+def get_reward_simple(rob, left, right):
+    irs = rob.read_irs()
+    irs = [ ir < COLLISIONDIST if ir != False else 0.0 for ir in irs ]
+    collisions = sum(irs)
+    left /= float(100) # normalize
+    right /= float(100) # normalize
+    reward = (left+right) - collisions
+    return reward
 
 def get_reward(rob, left, right):
     irs = rob.read_irs()
@@ -79,9 +78,6 @@ def get_state(rob):
         if value is False:
             irs[i] = True
 
-    #print("irs from get_state: ", irs)
-    #print("min irs", min(irs))
-    #print("irs.index(min(irs))", irs.index(min(irs)))
     if min(irs) < COLLISIONDIST: # Collissions
         if irs.index(min(irs)) == 5:
             state = 0
@@ -144,11 +140,14 @@ def get_state_hardware(rob):
 
     return state
 
-def choose_action(s, q_values, epsilon = 0.0):
+def choose_action(s, Q, epsilon = 0.1):
     if np.random.random() < epsilon:
         return np.random.choice(ACTIONS)
     else:
-        return np.argmax(q_values[s])
+        return np.argmax(Q[s])
+
+def choose_random_action():
+    return np.random.choice(ACTIONS)
 
 def take_action(rob, action):
     if action == 0:
@@ -171,63 +170,63 @@ def take_action(rob, action):
     time.sleep(0.2)
 
     r = get_reward(rob, left, right)
-    #new_s = get_state_hardware(rob)
     new_s = get_state(rob)
-    return r, new_s
+    done = new_s < 4
+    return r, new_s, done
 
 
-def update_highscore():
-    if return_per_episode[-1] == max(return_per_episode):
-        print("NEW HIGHSCORE!")
-        return True
-    else:
-        print("No new highscore")
-        return False
+def is_highscore():
+    return return_per_episode[-1] == max(return_per_episode)
+
+def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q=None):
+    # Q-learning loop
+    Q = np.zeros([len(STATES), len(ACTIONS)])
+    stats = []
+    Q_highscore = []
+
+    for i_episode in range(0,N_EPISODES):
+        print("Playing simulation")
+        rob.play_simulation()
+        time.sleep(1)
+
+        s = get_state(rob)
+
+        i = 0
+        R = 0
+        done = False
+        while done == False:
+            a = choose_action(s, Q, 0.1)
+            r, new_s, done = take_action(rob, a)
+
+            print("Reward: ", r)
+            print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", Q[s][a])
+            Q[s][a] = Q[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.max(Q[new_s]) - Q[s][a]))
+            print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", Q[s][a])
+            print("Q values: \n", Q)
+            s = new_s
+            R += r
+            i += 1
+
+        stats.append((i, R))
+        print("---", stats, "---")
+        print("Stopping world")
+        rob.stop_world()
+        time.sleep(5)
+
+        if is_highscore():
+            Q_highscore = copy.deepcopy(Q)
+
+        episode_lengths, episode_returns = zip(*stats)
+        print(episode_returns)
+    episode_lengths, episode_returns = zip(*stats)
 
 
 if __name__ == "__main__":
     try:
         rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
         # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
-
-        # Q-learning loop
-        q_values = np.ones([len(STATES), len(ACTIONS)]) * 5.0
-        return_per_episode = []
-        q_values_highscore = []
-        for episode in range(0,N_EPISODES):
-            print("Playing simulation")
-            rob.play_simulation()
-            time.sleep(1)
-
-            s = 3
-            episode_return = 0
-            for step in range(0,EPISODE_LENGTH):
-                a = choose_action(s, q_values)
-                r, new_s = take_action(rob, a)
-
-                print("Reward: ", r)
-                print("Old Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
-                q_values[s][a] = q_values[s][a] + (STEP_SIZE * (r + DISCOUNT_RATE*np.max(q_values[new_s]) - q_values[s][a]))
-                print("New Q value for", STATE_LABEL[s], ACTION_LABEL[a], ":", q_values[s][a])
-                print("Q values: \n", q_values)
-                s = new_s
-                episode_return += r
-
-
-        # DEBUG
-        # rob.move(80,100,5000)
-        # print("State: ", get_state(rob), STATE_LABEL[get_state(rob)])
-            return_per_episode.append(episode_return)
-            print("--- Return per episode: ", return_per_episode, "---")
-
-            if update_highscore() == True:
-                q_values_highscore = copy.deepcopy(q_values)
-
-            print("------------ q_values_highscore --------- = \n", q_values_highscore)                   
-
-            print("Stopping world")
-            rob.stop_world()
-            time.sleep(10)
+        Q_q_learning, (episode_lengths_q_learning, episode_returns_q_learning) = q_learning(rob, 20)
+        print(episode_returns_q_learning)
 
     except KeyboardInterrupt:
         print('Interrupted')
