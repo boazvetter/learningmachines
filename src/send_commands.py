@@ -30,8 +30,6 @@ EPISODE_LENGTH = 60
 STEP_SIZE=0.10
 DISCOUNT_RATE = 0.9
 
-
-
 def get_reward_simple(rob, left, right):
     irs = rob.read_irs()
     irs = [ ir < COLLISIONDIST if ir != False else 0.0 for ir in irs ]
@@ -49,9 +47,6 @@ def get_reward(rob, left, right):
     backR = irs[0] if irs[0] is not False else 1.0
     backC =  irs[1] if irs[1] is not False else 1.0
     backL = irs[2] if irs[2] is not False else 1.0
-    # print("Sensor values:", frontL, frontC, frontR)
-
-
 
     collisions = (frontL < COLLISIONDIST) + (frontC < COLLISIONDIST) + (frontR < COLLISIONDIST)
     + (backR < COLLISIONDIST) + (backC < COLLISIONDIST) + (backL < COLLISIONDIST)
@@ -87,7 +82,7 @@ def get_state(rob):
             state = 2
         elif irs.index(min(irs)) == 0 or irs.index(min(irs)) == 1 or irs.index(min(irs)) == 2:
             state = 3
-        print(STATE_LABEL[state])            
+        print(STATE_LABEL[state])
         return state
     elif min(irs) < COLLISIONDIST*2: # Near collissions
         if irs.index(min(irs)) == 5:
@@ -100,7 +95,7 @@ def get_state(rob):
             state = 7
     else:
         state = 8
-    print(STATE_LABEL[state])        
+    print(STATE_LABEL[state])
     return state
 
 
@@ -178,6 +173,8 @@ def take_action(rob, action):
 def is_highscore():
     return return_per_episode[-1] == max(return_per_episode)
 
+def deep_q_learning(rob, ..)
+
 def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q=None):
     # Q-learning loop
     Q = np.zeros([len(STATES), len(ACTIONS)])
@@ -219,9 +216,9 @@ def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q
         episode_lengths, episode_returns = zip(*stats)
         print(episode_returns)
     episode_lengths, episode_returns = zip(*stats)
+    return Q_highscore, episode_lengths, episode_returns
 
-
-if __name__ == "__main__":
+def main():
     try:
         rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
         # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
@@ -235,3 +232,6 @@ if __name__ == "__main__":
             sys.exit(0)
         except SystemExit:
             os._exit(0)
+
+if __name__ == "__main__":
+    main()
