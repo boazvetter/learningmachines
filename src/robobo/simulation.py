@@ -272,3 +272,10 @@ class SimulationRobobo(Robobo):
         return vrep.unwrap_vrep(
             vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking)
         )
+
+    def collected_food(self):
+        ints, floats, strings, buffer = vrep.unwrap_vrep(
+            vrep.simxCallScriptFunction(self._clientID, "Food", vrep.sim_scripttype_childscript, "remote_get_collected_food",
+                                        [],[],[],bytearray(),vrep.simx_opmode_blocking)
+        )
+        return ints[0]
