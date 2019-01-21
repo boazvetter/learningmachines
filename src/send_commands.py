@@ -68,12 +68,18 @@ def get_reward(rob, left, right):
     return reward
 
 def get_state(rob):
+    if str(rob.__class__.__name__) == "SimulationRobobo":
+        return get_state_simulation(rob)
+    elif str(rob.__class__.__name__) == "HardwareRobobo":
+        return get_state_hardware(rob)
+
+def get_state_simulation(rob):
     irs = rob.read_irs()
     for i, value in enumerate(irs):
         if value is False:
             irs[i] = True
 
-    if min(irs) < COLLISIONDIST: # Collissions
+    if min(irs) < COLLISIONDIST/2: # Collissions
         if irs.index(min(irs)) == 5:
             state = 0
         elif irs.index(min(irs)) == 3 or irs.index(min(irs)) == 4:
@@ -119,7 +125,7 @@ def get_state_hardware(rob):
             state = 3
         print(STATE_LABEL[state])
         return state
-    elif max(irs) > 60: # Near collissions
+    elif max(irs) > 30: # Near collissions
         if irs.index(max(irs)) == 5:
             state = 4
         elif irs.index(max(irs)) == 3 or irs.index(max(irs)) == 4:
@@ -161,7 +167,7 @@ def take_action(rob, action):
         print("Taking action 3", ACTION_LABEL[3])
         left, right = 15, -15
         #rob.move(30,0,400) # right
-    rob.move(left,right,500)
+    rob.move(left,right,250)
     time.sleep(0.2)
 
     r = get_reward(rob, left, right)
@@ -173,10 +179,15 @@ def take_action(rob, action):
 def is_highscore(returns_per_episode):
     return returns_per_episode[-1] == max(returns_per_episode)
 
+def get_epsilon(it):
+    # YOUR CODE HERE
+    return max(0.05, 1.0 - it * 0.00095)
 
-def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q=None):
+def q_learning(rob, num_episodes, discount_factor=0.9, alpha=0.5, epsilon=0.1, Q=None):
     # Q-learning loop
-    Q = np.zeros([len(STATES), len(ACTIONS)])
+    if Q is None:
+        Q = np.zeros([len(STATES), len(ACTIONS)])
+
     stats = {"episode_returns": [], "episode_lengths": []}
     Q_highscore = []
 
@@ -185,13 +196,15 @@ def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q
         rob.play_simulation()
         time.sleep(1)
 
-        s = get_state(rob)
+        s = 3
 
         i = 0
         R = 0
         done = False
-        while done == False:
-            a = choose_action(s, Q, 0.1)
+        for i in range(0,60):
+            eps = get_epsilon(sum(stats["episode_lengths"]))
+            print("Epsilon:", eps)
+            a = choose_action(s, Q, eps)
             r, new_s, done = take_action(rob, a)
 
             print("Reward: ", r)
@@ -215,19 +228,30 @@ def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q
 
     return Q_highscore, stats
 
-def main():
+def move_hardware(rob, Q):
+    while True:
+        s = get_state()
+        a = choose_action(s, Q, 0.0)
+        r, new_s, done = take_action(rob, a)
+
+def main(rob_type="SimulationRobobo"):
     try:
-        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19997)
-        # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
-        Q_q_learning, (episode_lengths_q_learning, episode_returns_q_learning) = q_learning(rob, 20)
+        if rob_type == "SimulationRobobo":
+            rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19997)
+            Q_q_learning, (episode_lengths_q_learning, episode_returns_q_learning) = q_learning(rob, 20)
+        elif rob_type == "HardwareRobobo":
+            rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.43.133")
+            Q = Q = [[0.,0.,0.,0.],[0.,0.,0.,0.],[0.,0.,0.,0.],[4.13587787,0.06515754,0.08685238,0.84601843],[0.80034718,4.48879057,0.35060668,2.56680053],[1.9755125,2.31687484,5.81285351,2.45373908],[2.19267049,2.95634372,2.37065368,5.86664625],[7.04772652,2.98071846,4.83595431,4.92874502],[6.60765458,4.77605517,5.50164496,5.58596694]]
+            move_hardware(rob, Q)
         print(episode_returns_q_learning)
 
-    except KeyboardInterrupt:
+    except Exception as e:
         print('Interrupted')
+        print(e)
         try:
             rob.stop_world()
             sys.exit(0)
-        except SystemExit:
+        except:
             os._exit(0)
 
 if __name__ == "__main__":
