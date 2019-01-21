@@ -72,8 +72,9 @@ class HardwareRobobo(Robobo):
         """
         self._set_env()
         self._move_srv(Int8(left_speed), Int8(right_speed), Int32(millis), Int16(blockid))
+        millis = millis / 2
         time.sleep(millis/1000.0)
-    
+
     def talk(self, message):
         self._set_env()
         self._talk_srv(String(message))
@@ -81,7 +82,7 @@ class HardwareRobobo(Robobo):
     def set_led(self, selector, color):
         self._set_env()
         self._leds(String(selector), String(color))
-    
+
     def read_irs(self):
         """
         Returns sensor readings: [backR, backC, backL, frontRR, frontR, frontC, frontL, frontLL]
@@ -121,7 +122,7 @@ class HardwareRobobo(Robobo):
         #print("Image download took {}".format(datetime.datetime.now()-start))
         image = self._receiving_image_front
         self._receiving_image_front = None
-        
+
         return image
 
     def set_phone_pan(self, pan_position, pan_speed, pan_blockid=1):

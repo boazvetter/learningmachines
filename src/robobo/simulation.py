@@ -122,13 +122,14 @@ class SimulationRobobo(Robobo):
         print("ROBOT EMOTION: {}".format(emotion))
 
     def move(self, left, right, millis=500):
+
         normalizer = 10.0
         left = left/normalizer
         right = right/normalizer
 
         self._vrep_set_joint_target_velocity(self._LeftMotor, left, vrep.simx_opmode_oneshot)
         self._vrep_set_joint_target_velocity(self._RightMotor, right, vrep.simx_opmode_oneshot)
-        self._vrep_get_ping_time()
+
 
         duration = millis / 1000.0
         # startTime = time.time()
@@ -138,7 +139,11 @@ class SimulationRobobo(Robobo):
         #     # RoboAbsPos       = vrep.unwrap_vrep(vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking))
         #     time.sleep(0.005)
         #print("sleeping for {}".format(duration))
+
+
+        print("sleeping")
         time.sleep(duration)
+        print("stop sleeping")
 
         # Stop to move the wheels motor. Angular velocity.
         stopRightVelocity = stopLeftVelocity = 0
