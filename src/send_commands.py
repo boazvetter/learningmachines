@@ -170,15 +170,14 @@ def take_action(rob, action):
     return r, new_s, done
 
 
-def is_highscore():
-    return return_per_episode[-1] == max(return_per_episode)
+def is_highscore(returns_per_episode):
+    return returns_per_episode[-1] == max(returns_per_episode)
 
-def deep_q_learning(rob, ..)
 
 def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q=None):
     # Q-learning loop
     Q = np.zeros([len(STATES), len(ACTIONS)])
-    stats = []
+    stats = {"episode_returns": [], "episode_lengths": []}
     Q_highscore = []
 
     for i_episode in range(0,N_EPISODES):
@@ -204,23 +203,21 @@ def q_learning(rob, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1, Q
             R += r
             i += 1
 
-        stats.append((i, R))
+        stats["episode_returns"].append(R)
+        stats["episode_lengths"].append(i)
         print("---", stats, "---")
         print("Stopping world")
         rob.stop_world()
         time.sleep(5)
 
-        if is_highscore():
+        if is_highscore(stats["episode_returns"]):
             Q_highscore = copy.deepcopy(Q)
 
-        episode_lengths, episode_returns = zip(*stats)
-        print(episode_returns)
-    episode_lengths, episode_returns = zip(*stats)
-    return Q_highscore, episode_lengths, episode_returns
+    return Q_highscore, stats
 
 def main():
     try:
-        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19995)
+        rob = robobo.SimulationRobobo(0).connect(address=os.environ.get('HOST_IP'), port=19997)
         # rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.22")
         Q_q_learning, (episode_lengths_q_learning, episode_returns_q_learning) = q_learning(rob, 20)
         print(episode_returns_q_learning)
