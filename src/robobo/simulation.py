@@ -139,11 +139,7 @@ class SimulationRobobo(Robobo):
         #     # RoboAbsPos       = vrep.unwrap_vrep(vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking))
         #     time.sleep(0.005)
         #print("sleeping for {}".format(duration))
-
-
-        print("sleeping")
         time.sleep(duration)
-        print("stop sleeping")
 
         # Stop to move the wheels motor. Angular velocity.
         stopRightVelocity = stopLeftVelocity = 0
