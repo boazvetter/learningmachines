@@ -3,6 +3,7 @@ import robobo
 import os
 import time
 import cv2
+import numpy as np
 
 class ForagingEnv():
     """
@@ -70,7 +71,7 @@ class ForagingEnv():
         self.rob.move(left,right,self.move_ms)
         time.sleep(0.2)
 
-        reward = self.get_reward(left, right)
+        reward = self.get_reward()
         new_s = self.get_state()
         done = new_s < 4
 
@@ -80,7 +81,7 @@ class ForagingEnv():
     def get_reward(self):
         irs = self.rob.read_irs()
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            new_n_collected = rob.collected_food()
+            new_n_collected = self.rob.collected_food()
             difference = new_n_collected - self.n_collected
 
             if difference > 0:
