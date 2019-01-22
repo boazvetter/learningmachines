@@ -20,6 +20,7 @@ import sys
 import copy
 import matplotlib.pyplot as plt
 from envs.obstacle_avoidance import ObstacleAvoidanceEnv
+from envs.foraging import ForagingEnv
 
 EPISODE_LENGTH = 60
 STEP_SIZE=0.10
@@ -38,7 +39,7 @@ def is_highscore(returns_per_episode):
     return returns_per_episode[-1] == max(returns_per_episode)
 
 def get_epsilon(it, start=1.0):
-    return max(0.05, start - it * 0.0018)
+    return max(0.05, start - it * 0.0009)
 
 def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.5, epsilon=0.1, Q=None):
     if Q == None:
@@ -91,37 +92,36 @@ def move_loop(env, Q, n=1000):
         r, s, done = env.step(a)
 
 
-def plot_Q(env, Q):
-    fig, ax = plt.subplots()
-    im = ax.imshow(Q)
+# def plot_Q(env, Q):
+#     fig, ax = plt.subplots()
+#     im = ax.imshow(Q)
 
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(env.observation_space.n))
-    ax.set_yticks(np.arange(env.action_space.n)
-    # ... and label them with the respective list entries
-    ax.set_xticklabels(env.observation_labels)
-    ax.set_yticklabels(env.action_labels)
+#     # We want to show all ticks...
+#     ax.set_xticks(np.arange(env.observation_space.n))
+#     ax.set_yticks(np.arange(env.action_space.n)
+#     # ... and label them with the respective list entries
+#     ax.set_xticklabels(env.observation_labels)
+#     ax.set_yticklabels(env.action_labels)
 
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-             rotation_mode="anchor")
+#     # Rotate the tick labels and set their alignment.
+#     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+#              rotation_mode="anchor")
 
-    # Loop over data dimensions and create text annotations.
-    for i in range(env.action_space.n)):
-        for j in range(env.observation_space.n):
-            text = ax.text(j, i, round(Q[i][j],2),
-                           ha="center", va="center", color="w")
+#     # Loop over data dimensions and create text annotations.
+#     for i in range(env.action_space.n)):
+#         for j in range(env.observation_space.n):
+#             text = ax.text(j, i, round(Q[i][j],2),
+#                            ha="center", va="center", color="w")
 
-    ax.set_title("Q values")
-    plt.rcParams["figure.figsize"] = (10,5)
-    fig.tight_layout()
-    plt.savefig("q_values.png")
-    # plt.close()
+#     ax.set_title("Q values")
+#     plt.rcParams["figure.figsize"] = (10,5)
+#     fig.tight_layout()
+#     plt.savefig("q_values.png")
+#     # plt.close()
 
 def main(rob_type="simulation"):
-
     try:
-        env = ObstacleAvoidanceEnv(rob_type)
+        env = ForagingEnv(rob_type)
         if rob_type == "simulation":
             Q_q_learning, (episode_lengths_q_learning, episode_returns_q_learning) = q_learning(env, 20)
             print(episode_returns_q_learning)

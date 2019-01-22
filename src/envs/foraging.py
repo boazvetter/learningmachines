@@ -122,6 +122,8 @@ class ForagingEnv():
         try:
             self.rob.stop_world()
             time.sleep(10)
+        except:
+            pass
         self.rob.play_simulation()
         time.sleep(1)
         self.take_super_small_movement()
