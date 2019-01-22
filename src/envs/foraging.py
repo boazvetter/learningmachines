@@ -41,13 +41,14 @@ class ForagingEnv():
     """
 
     def __init__(self, rob_type):
-        self.action_space = spaces.Discrete(4)
-        self.action_labels = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
+        self.action_space = spaces.Discrete(3)
+        self.action_labels = ["Driving forward", "Driving left", "Driving right"]
         self.observation_space = spaces.Discrete(10)
         self.observation_labels = ["Food Top Left", "Food Top Center", "Food Top Right", "Food Middle Left", "Food Middle Center", "Food Middle Right", "Food Bottom Left", "Food Bottom Center", "Food Bottom Right", "No Food"]
         self.state = None
-        self.move_ms = 250
+        self.move_ms = 500
         self.n_collected = 0
+        self.step_i = 0
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
@@ -56,39 +57,52 @@ class ForagingEnv():
         else:
             raise Exception('rob_type should be either "simulation" or "hardware"')
 
+
+
     def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         state = self.state
 
         if action == 0:
             left , right = 30, 30
+        # elif action == 1:
+        #     left, right = -30, -30
         elif action == 1:
-            left, right = -30, -30
-        elif action == 2:
             left, right = -15, 15
-        elif action == 3:
+        elif action == 2:
             left, right = 15, -15
         self.rob.move(left,right,self.move_ms)
         time.sleep(0.2)
 
         reward = self.get_reward()
         new_s = self.get_state()
-        done = self.rob.collected_food() == 7
+        print("collected_food", self.n_collected)
+        print("episode step:", self.step_i)
+        if self.n_collected > 17 or self.step_i > 200:
+            self.step_i = 0
+            done = True
+        else:
+            done = False
+        print("collected_food done")
 
+        self.step_i += 1
         self.state = new_s
         return self.state, reward, done
 
     def get_reward(self):
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            new_n_collected = self.rob.collected_food()
-            difference = new_n_collected - self.n_collected
-            self.n_collected = new_n_collected
-            if difference > 0:
-                print("Reward: 100")
-                return 100
-            else:
-                print("Reward: -1")
-                return -1
+            try:
+                new_n_collected = self.rob.collected_food()
+                difference = new_n_collected - self.n_collected
+                self.n_collected = new_n_collected
+                if difference > 0:
+                    print("Reward: 10")
+                    return 10*difference
+                else:
+                    print("Reward: -1")
+                    return -1
+            except:
+                return 0
         else:
             return Exception("Reward function not possible on hardware")
 
@@ -149,6 +163,11 @@ class ForagingEnv():
             time.sleep(10)
         except:
             pass
+
+        for i in range(0,16):
+            print("Setting position")
+            self.rob.set_food_position(i)
+
         self.rob.play_simulation()
         time.sleep(1)
         self.rob.set_phone_tilt(0.72, 100)

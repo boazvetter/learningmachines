@@ -274,6 +274,22 @@ class SimulationRobobo(Robobo):
             vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking)
         )
 
+    def set_food_position(self, food_number):
+        if food_number == 0:
+            food = self._vrep_get_object_handle('Food', vrep.simx_opmode_blocking)
+        else:
+            food = self._vrep_get_object_handle('Food{}'.format(food_number), vrep.simx_opmode_blocking)
+
+        xmin = -4.0
+        xmax = -2.175
+        ymin = -0.2
+        ymax = 1.8
+        x = np.random.uniform(xmin, xmax)
+        y = np.random.uniform(ymin, ymax)
+        vrep.simxSetObjectPosition(self._clientID, food, -1, (x, y, 0.05), vrep.simx_opmode_blocking)
+        time.sleep(0.1)
+        vrep.simxSetObjectPosition(self._clientID, food, -1, (x, y, 0.05), vrep.simx_opmode_blocking)
+
     def collected_food(self):
         ints, floats, strings, buffer = vrep.unwrap_vrep(
             vrep.simxCallScriptFunction(self._clientID, "Food", vrep.sim_scripttype_childscript, "remote_get_collected_food",
