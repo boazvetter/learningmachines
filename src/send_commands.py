@@ -258,4 +258,7 @@ def main(rob_type="simulation"):
             os._exit(0)
 
 if __name__ == "__main__":
-    main("hardware")
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
