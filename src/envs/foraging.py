@@ -83,10 +83,12 @@ class ForagingEnv():
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             new_n_collected = self.rob.collected_food()
             difference = new_n_collected - self.n_collected
-
+            self.n_collected = new_n_collected
             if difference > 0:
+                print("Reward: 100")
                 return 100
             else:
+                print("Reward: -1")
                 return -1
         else:
             return Exception("Reward function not possible on hardware")
