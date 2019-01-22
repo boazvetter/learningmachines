@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from envs.obstacle_avoidance import ObstacleAvoidanceEnv
 from envs.foraging import ForagingEnv
 
-EPISODE_LENGTH = 60
+EPISODE_LENGTH = 300
 STEP_SIZE=0.10
 DISCOUNT_RATE = 0.9
 
@@ -39,7 +39,7 @@ def is_highscore(returns_per_episode):
     return returns_per_episode[-1] == max(returns_per_episode)
 
 def get_epsilon(it, start=1.0):
-    return max(0.05, start - it * 0.0009)
+    return max(0.05, start - it * 0.0018)
 
 def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.5, epsilon=0.1, Q=None):
     if Q == None:
@@ -55,8 +55,8 @@ def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.5, epsilon=0.1, Q
         i = 0
         R = 0
         done = False
-        for i in range(0,60):
-            eps = get_epsilon(global_steps, 0.5)
+        while done == False:
+            eps = get_epsilon(global_steps, 1.0)
             print("Epsilon:", eps)
             a = choose_action(env, s, Q, eps)
             new_s, r, done = env.step(a)

@@ -14,15 +14,15 @@ class ForagingEnv():
     Observation:
         Type: Box(9)
         Num Observation
-        0   Collision center
-        1   Collision right
-        2   Collision left
-        3   Collision back
-        4   Near collision center
-        5   Near collision right
-        6   Near collision left
-        7   Near collision back
-        8   No collision
+        0   Food Top Left
+        1   Food Top Center
+        2   Food Top Right
+        3   Food Middle Left
+        4   Food Middle Center
+        5   Food Middle Right
+        6   Food Bottom Left
+        7   Food Bottom Center
+        8   Food Bottom Right
 
     Actions:
         Type: Discrete(4)
@@ -43,8 +43,8 @@ class ForagingEnv():
     def __init__(self, rob_type):
         self.action_space = spaces.Discrete(4)
         self.action_labels = ["Driving forward", "Driving backward", "Driving left", "Driving right"]
-        self.observation_space = spaces.Discrete(9)
-        self.observation_labels = ["Food Top Left", "Food Top Center", "Food Top Right", "Food Middle Left", "Food Middle Center", "Food Middle Right", "Food Bottom Left", "Food Middle Center", "Food Middle Right"]
+        self.observation_space = spaces.Discrete(10)
+        self.observation_labels = ["Food Top Left", "Food Top Center", "Food Top Right", "Food Middle Left", "Food Middle Center", "Food Middle Right", "Food Bottom Left", "Food Bottom Center", "Food Bottom Right", "No Food"]
         self.state = None
         self.move_ms = 250
         self.n_collected = 0
@@ -73,7 +73,7 @@ class ForagingEnv():
 
         reward = self.get_reward()
         new_s = self.get_state()
-        done = new_s < 4
+        done = self.rob.collected_food() == 7
 
         self.state = new_s
         return self.state, reward, done
@@ -95,7 +95,7 @@ class ForagingEnv():
 
     def mask_img(self, img):
         # Lower and upper boundary of green
-        lower = np.array([0, 0, 1], np.uint8)
+        lower = np.array([0, 0, 0], np.uint8)
         upper = np.array([50, 255, 50], np.uint8)
 
         # Create a mask for orange
@@ -107,7 +107,25 @@ class ForagingEnv():
         #[0 1 2
         # 3 4 5
         # 6 7 8]
-        img = self.rob.get_image_front()
+
+        rgb = self.rob.get_image_front()
+        img = rgb.copy()
+        gray = self.mask_img(rgb)
+
+        rows_rgb, cols_rgb, channels = rgb.shape
+        rows_gray, cols_gray = gray.shape
+
+        rows_comb = max(rows_rgb, rows_gray)
+        cols_comb = cols_rgb + cols_gray
+        comb = np.zeros(shape=(rows_comb, cols_comb, channels), dtype=np.uint8)
+
+        comb[:rows_rgb, :cols_rgb] = rgb
+        comb[:rows_gray, cols_rgb:] = gray[:, :, None]
+
+        try:
+            cv2.imwrite("robotview.png", comb)
+        except:
+            pass
         greencount = []
         for i in range(3):
             for j in range(3):
@@ -115,7 +133,12 @@ class ForagingEnv():
                 sub_image = img[int(part*i):int(part*(i+1)), int(part*j):int(part*(j+1))]
                 sub_image = self.mask_img(sub_image)
                 greencount.append(np.count_nonzero(sub_image))
-        return greencount.index(max(greencount))
+        if sum(greencount) < 5:
+            s = 9
+        else:
+            s = greencount.index(max(greencount))
+        print("STATE: ", self.observation_labels[s])
+        return s
 
     def take_super_small_movement(self):
         self.rob.move(1, 1, 500)
@@ -129,6 +152,7 @@ class ForagingEnv():
             pass
         self.rob.play_simulation()
         time.sleep(1)
+        self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
         return self.get_state()
 
