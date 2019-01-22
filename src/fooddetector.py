@@ -27,7 +27,7 @@ import os
 
 def mask_img(img):
     # Lower and upper boundary of green
-    lower = np.array([0, 0, 0], np.uint8)
+    lower = np.array([0, 0, 1], np.uint8)
     upper = np.array([50, 255, 50], np.uint8)
 
     # Create a mask for orange
@@ -35,8 +35,30 @@ def mask_img(img):
     return mask
 
 img = cv2.imread('foodblock.png',1)
-img = mask_img(img)
-print(img)
-cv2.imshow('image',img)
+
+STATE_LABEL_FOOD = ["Food Top Left", "Food Top Center", "Food Top Right", "Food Middle Left", "Food Middle Center", "Food Middle Right", "Food Bottom Left", "Food Middle Center", "Food Middle Right"]
+
+def get_state_food():
+#Subimages:
+#[0 1 2
+# 3 4 5
+# 6 7 8]
+	img = cv2.imread('foodblock.png',1)
+	greencount = []
+	for i in range(3):
+		for j in range(3):
+			part = len(img)/3
+			sub_image = img[int(part*i):int(part*(i+1)), int(part*j):int(part*(j+1))]
+			sub_image = mask_img(sub_image)
+			greencount.append(np.count_nonzero(sub_image))
+			s = '%s %s' % (i, j)			
+			cv2.imshow(s, sub_image)			
+	return greencount.index(max(greencount))
+
+print(get_state_food())
+
+cv2.imshow('image', img)
+masked_full = mask_img(img)
+cv2.imshow('masked', masked_full)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
