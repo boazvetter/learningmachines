@@ -79,7 +79,6 @@ class ForagingEnv():
         return self.state, reward, done
 
     def get_reward(self):
-        irs = self.rob.read_irs()
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             new_n_collected = self.rob.collected_food()
             difference = new_n_collected - self.n_collected
@@ -108,24 +107,24 @@ class ForagingEnv():
         # 3 4 5
         # 6 7 8]
 
-        rgb = self.rob.get_image_front()
-        img = rgb.copy()
-        gray = self.mask_img(rgb)
+        img = self.rob.get_image_front()
+        # img = rgb.copy()
+        # gray = self.mask_img(rgb)
 
-        rows_rgb, cols_rgb, channels = rgb.shape
-        rows_gray, cols_gray = gray.shape
+        # rows_rgb, cols_rgb, channels = rgb.shape
+        # rows_gray, cols_gray = gray.shape
 
-        rows_comb = max(rows_rgb, rows_gray)
-        cols_comb = cols_rgb + cols_gray
-        comb = np.zeros(shape=(rows_comb, cols_comb, channels), dtype=np.uint8)
+        # rows_comb = max(rows_rgb, rows_gray)
+        # cols_comb = cols_rgb + cols_gray
+        # comb = np.zeros(shape=(rows_comb, cols_comb, channels), dtype=np.uint8)
 
-        comb[:rows_rgb, :cols_rgb] = rgb
-        comb[:rows_gray, cols_rgb:] = gray[:, :, None]
+        # comb[:rows_rgb, :cols_rgb] = rgb
+        # comb[:rows_gray, cols_rgb:] = gray[:, :, None]
 
-        try:
-            cv2.imwrite("robotview.png", comb)
-        except:
-            pass
+        # try:
+        #     cv2.imwrite("robotview.png", comb)
+        # except:
+        #     pass
         greencount = []
         for i in range(3):
             for j in range(3):
