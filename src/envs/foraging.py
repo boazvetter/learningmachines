@@ -150,8 +150,9 @@ class ForagingEnv():
         greencount = []
         for i in range(3):
             for j in range(3):
-                part = len(img)/3
-                sub_image = img[int(part*i):int(part*(i+1)), int(part*j):int(part*(j+1))]
+                part_x = img.shape[0]/3
+                part_y = img.shape[1]/3
+                sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
                 sub_image = self.mask_img(sub_image)
                 greencount.append(np.count_nonzero(sub_image))
         if sum(greencount) < 5:
