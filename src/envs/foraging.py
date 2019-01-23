@@ -49,6 +49,7 @@ class ForagingEnv():
         self.move_ms = 500
         self.n_collected = 0
         self.step_i = 0
+        self.rob_type = rob_type
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
