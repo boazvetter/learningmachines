@@ -23,6 +23,7 @@ class ForagingEnv():
         6   Food Bottom Left
         7   Food Bottom Center
         8   Food Bottom Right
+        9   No food
 
     Actions:
         Type: Discrete(4)
@@ -44,7 +45,7 @@ class ForagingEnv():
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
         self.observation_space = spaces.Discrete(10)
-        self.observation_labels = ["Food Top Left", "Food Top Center", "Food Top Right", "Food Middle Left", "Food Middle Center", "Food Middle Right", "Food Bottom Left", "Food Bottom Center", "Food Bottom Right", "No Food"]
+        self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
         self.state = None
         self.move_ms = 500
         self.n_collected = 0
@@ -54,7 +55,13 @@ class ForagingEnv():
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
         elif rob_type == "hardware":
+            print("connecting with hardware")
             self.rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.86")
+            self.rob.talk("Tilting")
+            self.rob.set_phone_tilt(106, 50)
+            self.rob.set_phone_tilt(109, 5)
+            time.sleep(8)
+
         else:
             raise Exception('rob_type should be either "simulation" or "hardware"')
 
@@ -75,7 +82,10 @@ class ForagingEnv():
         self.rob.move(left,right,self.move_ms)
         time.sleep(0.2)
 
-        reward = self.get_reward()
+        if str(self.rob.__class__.__name__) == "SimulationRobobo":
+            reward = self.get_reward()
+        else:
+            reward = -1
         new_s = self.get_state()
         print("collected_food", self.n_collected)
         print("episode step:", self.step_i)
@@ -118,9 +128,13 @@ class ForagingEnv():
 
         if self.rob_type == "hardware":
             hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
-            minHSV = np.array([30, 0, 0])
-            maxHSV = np.array([90, 255, 255])
+            # cv2.imwrite('robotviews/robotview{}-hsv.jpg'.format(testtime), hsv)
+            # time.sleep(0.1)
+            minHSV = np.array([45, 70, 20])
+            maxHSV = np.array([94, 255, 255])
             mask = cv2.inRange(hsv,minHSV,maxHSV)
+            # cv2.imwrite('robotviews/robotview{}-mask.jpg'.format(testtime), mask)
+            # time.sleep(0.1)
         return mask
 
     def get_state(self):
@@ -132,6 +146,8 @@ class ForagingEnv():
         img = self.rob.get_image_front()
         # img = rgb.copy()
         # gray = self.mask_img(rgb)
+        img = cv2.resize(img,(240,320))
+        img = cv2.GaussianBlur(img, (9, 9), 0)
 
         # rows_rgb, cols_rgb, channels = rgb.shape
         # rows_gray, cols_gray = gray.shape
@@ -155,11 +171,14 @@ class ForagingEnv():
                 sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
                 sub_image = self.mask_img(sub_image)
                 greencount.append(np.count_nonzero(sub_image))
-        if sum(greencount) < 5:
+        if max(greencount) < 30:
             s = 9
         else:
             s = greencount.index(max(greencount))
+        print("greencount", greencount)
         print("STATE: ", self.observation_labels[s])
+        if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
+            self.rob.talk(self.observation_labels[s])
         return s
 
     def take_super_small_movement(self):
