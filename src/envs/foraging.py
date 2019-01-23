@@ -106,13 +106,20 @@ class ForagingEnv():
         else:
             return Exception("Reward function not possible on hardware")
 
-    def mask_img(self, img):
-        # Lower and upper boundary of green
-        lower = np.array([0, 0, 0], np.uint8)
-        upper = np.array([50, 255, 50], np.uint8)
+    def mask_img(self, img, rob_type="simulation"):
+        if selection == "simulation":
+            # Lower and upper boundary of green
+            lower = np.array([0, 0, 0], np.uint8)
+            upper = np.array([50, 255, 50], np.uint8)
 
-        # Create a mask for orange
-        mask = cv2.inRange(img, lower, upper)
+            # Create a mask for orange
+            mask = cv2.inRange(img, lower, upper)
+
+        if selection == "hardware":
+            hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+            minHSV = np.array([30, 0, 0])
+            maxHSV = np.array([90, 255, 255])
+            mask = cv2.inRange(hsv,minHSV,maxHSV)
         return mask
 
     def get_state(self):
@@ -144,7 +151,7 @@ class ForagingEnv():
             for j in range(3):
                 part = len(img)/3
                 sub_image = img[int(part*i):int(part*(i+1)), int(part*j):int(part*(j+1))]
-                sub_image = self.mask_img(sub_image)
+                sub_image = self.mask_img(sub_image, rob_type)
                 greencount.append(np.count_nonzero(sub_image))
         if sum(greencount) < 5:
             s = 9
