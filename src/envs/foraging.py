@@ -4,6 +4,7 @@ import os
 import time
 import cv2
 import numpy as np
+import torch
 
 class ForagingEnv():
     """
@@ -53,7 +54,7 @@ class ForagingEnv():
         self.rob_type = rob_type
 
         if rob_type == "simulation":
-            self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
+            self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19997)
         elif rob_type == "hardware":
             print("connecting with hardware")
             self.rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.86")
@@ -67,7 +68,7 @@ class ForagingEnv():
 
 
 
-    def step(self, action):
+    def step(self, action, as_tensor=False):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         state = self.state
 
@@ -86,7 +87,7 @@ class ForagingEnv():
             reward = self.get_reward()
         else:
             reward = -1
-        new_s = self.get_state()
+        new_s = self.get_state(as_tensor)
         print("collected_food", self.n_collected)
         print("episode step:", self.step_i)
         if self.n_collected > 17 or self.step_i > 200:
@@ -133,11 +134,12 @@ class ForagingEnv():
             minHSV = np.array([45, 70, 20])
             maxHSV = np.array([94, 255, 255])
             mask = cv2.inRange(hsv,minHSV,maxHSV)
+
             # cv2.imwrite('robotviews/robotview{}-mask.jpg'.format(testtime), mask)
             # time.sleep(0.1)
         return mask
 
-    def get_state(self):
+    def get_state(self, as_tensor=False):
         #Subimages:
         #[0 1 2
         # 3 4 5
@@ -163,29 +165,41 @@ class ForagingEnv():
         #     cv2.imwrite("robotview.png", comb)
         # except:
         #     pass
-        greencount = []
-        for i in range(3):
-            for j in range(3):
-                part_x = img.shape[0]/3
-                part_y = img.shape[1]/3
-                sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
-                sub_image = self.mask_img(sub_image)
-                greencount.append(np.count_nonzero(sub_image))
-        if max(greencount) < 30:
-            s = 9
-        else:
-            s = greencount.index(max(greencount))
-        print("greencount", greencount)
-        print("STATE: ", self.observation_labels[s])
-        if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
-            self.rob.talk(self.observation_labels[s])
+        #
+        # greencount = []
+        # for i in range(3):
+        #     for j in range(3):
+        #         part_x = img.shape[0]/3
+        #         part_y = img.shape[1]/3
+        #         sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
+        #         sub_image = self.mask_img(sub_image)
+        #         greencount.append(np.count_nonzero(sub_image))
+        # if max(greencount) < 30:
+        #     s = 9
+        # else:
+        #     s = greencount.index(max(greencount))
+        # print("greencount", greencount)
+        # print("STATE: ", self.observation_labels[s])
+        # if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
+        #     self.rob.talk(self.observation_labels[s])
         return s
+
+        img = self.mask_img(img)
+        img = np.expand_dims(img, axis=0)
+        if as_tensor:
+            img = np.ascontiguousarray(img, dtype=np.float32)
+            img = torch.from_numpy(img)
+
+        # print("STATE: ", self.observation_labels[s])
+        # if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
+        #     self.rob.talk(self.observation_labels[s])
+        return img
 
     def take_super_small_movement(self):
         self.rob.move(1, 1, 500)
         time.sleep(0.2)
 
-    def reset(self):
+    def reset(self, as_tensor=False):
         try:
             self.rob.stop_world()
             time.sleep(10)
@@ -200,7 +214,7 @@ class ForagingEnv():
         time.sleep(1)
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
-        return self.get_state()
+        return self.get_state(as_tensor)
 
     def render(self, mode='human'):
         pass
