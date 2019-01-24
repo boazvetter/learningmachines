@@ -75,13 +75,14 @@ class ForagingEnv():
 
         if action == 0:
             left , right = 30, 30
-        # elif action == 1:
-        #     left, right = -30, -30
+            self.rob.move(left,right,400)
         elif action == 1:
             left, right = -15, 15
+            self.rob.move(left,right,self.move_ms)
         elif action == 2:
             left, right = 15, -15
-        self.rob.move(left,right,self.move_ms)
+            self.rob.move(left,right,self.move_ms)
+        
         time.sleep(0.2)
 
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
@@ -89,14 +90,14 @@ class ForagingEnv():
         else:
             reward = -1
         new_s = self.get_state()
-        print("collected_food", self.n_collected)
+        #print("collected_food", self.n_collected)
         print("episode step:", self.step_i)
-        if self.n_collected > 17 or self.step_i > 200:
+        if self.n_collected > 17 or self.step_i > 199:
             self.step_i = 0
             done = True
         else:
             done = False
-        print("collected_food done")
+        #print("collected_food done")
 
         self.step_i += 1
         self.state = new_s
@@ -109,10 +110,10 @@ class ForagingEnv():
                 difference = new_n_collected - self.n_collected
                 self.n_collected = new_n_collected
                 if difference > 0:
-                    print("Reward: 10")
+                    #print("Reward: 10")
                     return 10*difference
                 else:
-                    print("Reward: -1")
+                    #print("Reward: -1")
                     return -1
             except:
                 return 0
@@ -177,8 +178,8 @@ class ForagingEnv():
             s = 9
         else:
             s = greencount.index(max(greencount))
-        print("greencount", greencount)
-        print("STATE: ", self.observation_labels[s])
+        #print("greencount", greencount)
+        #print("STATE: ", self.observation_labels[s])
         if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
             self.rob.talk(self.observation_labels[s])
         return s
