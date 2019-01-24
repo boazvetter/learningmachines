@@ -42,16 +42,17 @@ class ForagingEnv():
         After 60 episodes
     """
 
-    def __init__(self, rob_type):
+    def __init__(self, rob_type, use_torch=False, timestep=100):
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
         self.observation_space = spaces.Discrete(10)
         self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
         self.state = None
-        self.move_ms = 500
+        self.move_ms = 500 * 100.0/timestep
         self.n_collected = 0
         self.step_i = 0
         self.rob_type = rob_type
+        self.use_torch = use_torch
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19997)
@@ -87,7 +88,7 @@ class ForagingEnv():
             reward = self.get_reward()
         else:
             reward = -1
-        new_s = self.get_state(as_tensor)
+        new_s = self.get_state()
         print("collected_food", self.n_collected)
         print("episode step:", self.step_i)
         if self.n_collected > 17 or self.step_i > 200:
@@ -139,7 +140,13 @@ class ForagingEnv():
             # time.sleep(0.1)
         return mask
 
-    def get_state(self, as_tensor=False):
+    def get_state(self):
+        if self.use_torch:
+            return self.get_state_torch()
+        else:
+            return self.get_state_greencount()
+
+    def get_state_greencount(self):
         #Subimages:
         #[0 1 2
         # 3 4 5
@@ -151,49 +158,50 @@ class ForagingEnv():
         img = cv2.resize(img,(240,320))
         img = cv2.GaussianBlur(img, (9, 9), 0)
 
-        # rows_rgb, cols_rgb, channels = rgb.shape
-        # rows_gray, cols_gray = gray.shape
 
-        # rows_comb = max(rows_rgb, rows_gray)
-        # cols_comb = cols_rgb + cols_gray
-        # comb = np.zeros(shape=(rows_comb, cols_comb, channels), dtype=np.uint8)
-
-        # comb[:rows_rgb, :cols_rgb] = rgb
-        # comb[:rows_gray, cols_rgb:] = gray[:, :, None]
 
         # try:
         #     cv2.imwrite("robotview.png", comb)
         # except:
         #     pass
         #
-        # greencount = []
-        # for i in range(3):
-        #     for j in range(3):
-        #         part_x = img.shape[0]/3
-        #         part_y = img.shape[1]/3
-        #         sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
-        #         sub_image = self.mask_img(sub_image)
-        #         greencount.append(np.count_nonzero(sub_image))
-        # if max(greencount) < 30:
-        #     s = 9
-        # else:
-        #     s = greencount.index(max(greencount))
-        # print("greencount", greencount)
-        # print("STATE: ", self.observation_labels[s])
-        # if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
-        #     self.rob.talk(self.observation_labels[s])
+        greencount = []
+        for i in range(3):
+            for j in range(3):
+                part_x = img.shape[0]/3
+                part_y = img.shape[1]/3
+                sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
+                sub_image = self.mask_img(sub_image)
+                greencount.append(np.count_nonzero(sub_image))
+        if max(greencount) < 20:
+            s = 9
+        else:
+            s = greencount.index(max(greencount))
+        print("greencount", greencount)
+        print("STATE: ", self.observation_labels[s])
+        if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
+            self.rob.talk(self.observation_labels[s])
         return s
 
+    def get_state_torch(self):
+        img = self.rob.get_image_front()
         img = self.mask_img(img)
         img = np.expand_dims(img, axis=0)
-        if as_tensor:
-            img = np.ascontiguousarray(img, dtype=np.float32)
-            img = torch.from_numpy(img)
-
-        # print("STATE: ", self.observation_labels[s])
-        # if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
-        #     self.rob.talk(self.observation_labels[s])
+        img = np.ascontiguousarray(img, dtype=np.float32)
+        img = torch.from_numpy(img)
         return img
+
+    def get_combined_image(self, image1, image2):
+        rows_image1, cols_image1, channels = image1.shape
+        rows_image2, cols_image2 = image2.shape
+
+        rows_comb = max(rows_image1, rows_image2)
+        cols_comb = cols_image1 + cols_image2
+        comb = np.zeros(shape=(rows_comb, cols_comb, channels), dtype=np.uint8)
+
+        comb[:rows_image1, :cols_image1] = image1
+        comb[:rows_image2, cols_image2:] = image2[:, :, None]
+        return comb
 
     def take_super_small_movement(self):
         self.rob.move(1, 1, 500)
@@ -214,7 +222,7 @@ class ForagingEnv():
         time.sleep(1)
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
-        return self.get_state(as_tensor)
+        return self.get_state()
 
     def render(self, mode='human'):
         pass
