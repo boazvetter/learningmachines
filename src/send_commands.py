@@ -20,6 +20,7 @@ import sys
 import copy
 from envs.obstacle_avoidance import ObstacleAvoidanceEnv
 from envs.foraging import ForagingEnv
+from envs.predator_prey import PredatorPreyEnv
 
 import math
 import random
@@ -308,7 +309,7 @@ def move_loop(env, Q, n=1000):
 
 def main(rob_type="simulation"):
     try:
-        env = ForagingEnv(rob_type, use_torch=False, timestep=200)
+        env = PredatorPreyEnv(rob_type, use_torch=False, timestep=200)
         if rob_type == "simulation":
             #Q = [[4.45060120,-2.06225533,-1.81768766],[-1.03861586,1.80691349,-1.91895023],[2.77934013,-1.46312114,-1.84231539],[0.000982035172,0.0296677677,-0.0600853476],[8.76705569,-0.814653054,-0.0799524677],[-0.558391604,-0.548860758,4.51479662],[13.3267505,0.384440106,0.585902213],[15.0547359,0.00000000,0.143453233],[10.47699170,2.80120404,-0.0673019374],[-2.22933065,4.96889182,-2.21165651]]
             stats_multirun = []
@@ -320,6 +321,7 @@ def main(rob_type="simulation"):
                 #episode_durations = q_learning(env, 200)
                 # print(episode_returns_q_learning)
             print("Final stats:", stats_multirun)
+            env.stop()
         elif rob_type == "hardware":
             print("hardware")
             # Q = [[-0.44, 0.22153309, -0.57, -0.3], [-0.3454, -0.16795115, -0.1, -0.21768462], [-0.566, -0.10283485, -0.3, -0.28], [1.23748891, -0.49995302, -0.40511995, -0.37325519], [-0.17464731640341957, 0.61231007, 3.0354045876814824, 0.046495886876921744], [1.00115432, 1.4645077162470928, 3.4647981388329692, 1.90722029], [-0.18697424, 1.38497489, 0.37807747, 3.4394753686573045], [4.2182948983594049, 0.4034608, 1.65523245, 1.48061655], [4.1249884667392127, 3.0061457889920646, 3.66441848, 3.4528335033202016]]
