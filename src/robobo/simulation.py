@@ -12,7 +12,7 @@ class SimulationRobobo(Robobo):
     def __init__(self, number=""):
         self._clientID = None
         self._value_number = number
-    
+
     def connect(self, address='127.0.0.1', port=19999):
         # vrep.simxFinish(-1)  # just in case, close all opened connections
         self._clientID = vrep.simxStart(address, port, True, True, 5000, 5)  # Connect to V-REP
@@ -84,7 +84,7 @@ class SimulationRobobo(Robobo):
 
         self.wait_for_ping()
 
-    def wait_for_ping(self, timeout_seconds=120.0):
+    def wait_for_ping(self, timeout_seconds=30.0):
         startTime = time.time()
         while time.time() - startTime < timeout_seconds:
             try:
@@ -94,7 +94,7 @@ class SimulationRobobo(Robobo):
             except vrep.VrepApiError as _e:
                 # print("check failed")
                 time.sleep(0.05)
-        
+
         print("{} seconds passed with ping not coming online, you may expericence problems with the connection".format(timeout_seconds))
         return False
 
@@ -113,7 +113,7 @@ class SimulationRobobo(Robobo):
         except vrep.error.VrepApiError as error:
             if error.ret_code is not vrep.simx_return_novalue_flag:
                 raise
-        
+
     def _vrep_get_vision_sensor_image(self, camera_handle, opmode=vrep.simx_opmode_buffer, a=0):
         return vrep.unwrap_vrep(vrep.simxGetVisionSensorImage(self._clientID, camera_handle, a, opmode))
 
@@ -154,7 +154,7 @@ class SimulationRobobo(Robobo):
         #     time.sleep(0.005)
         # print("sleeping for {}".format(duration))
         time.sleep(duration)
-        
+
         # Stop to move the wheels motor. Angular velocity.
         stopRightVelocity = stopLeftVelocity = 0
         self._vrep_set_joint_target_velocity(self._LeftMotor, stopLeftVelocity,
@@ -168,11 +168,11 @@ class SimulationRobobo(Robobo):
 
     def set_led(self, selector, color):
         raise NotImplementedError("Not implemeted yet")
-    
+
     def read_irs(self):
         """
         returns sensor readings: [backR, backC, backL, frontRR, frontR, frontC, frontL, frontLL]
-        """      
+        """
         detectionStateIrFrontC, detectedPointIrFrontC, detectedObjectHandleIrFrontC, \
         detectedSurfaceNormalVectorIrFrontC = self._vrep_read_proximity_sensor(
             self._IrFrontC, vrep.simx_opmode_buffer)
@@ -267,12 +267,12 @@ class SimulationRobobo(Robobo):
         # tilt_position = np.pi / 4.0
         self._vrep_set_joint_target_position(self._TiltMotor, tilt_position)
         self.wait_for_ping()
-    
+
     def pause_simulation(self):
         vrep.unwrap_vrep(
             vrep.simxPauseSimulation(self._clientID, vrep.simx_opmode_blocking)
         )
-    
+
     def play_simulation(self):
         vrep.unwrap_vrep(
             vrep.simxStartSimulation(self._clientID, vrep.simx_opmode_blocking)

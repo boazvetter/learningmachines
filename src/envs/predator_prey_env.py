@@ -10,7 +10,7 @@ import prey
 class PredatorPreyEnv():
     """
     Description:
-        A two-wheeled robot needs to perform foraging behaviour; search and eat food
+        A two-wheeled robot (predator) needs to catch the prey.
     Source:
         The Learning Machines course (2019) from the Vrije Universiteit Amsterdam.
     Observation:
@@ -54,12 +54,12 @@ class PredatorPreyEnv():
         self.step_i = 0
         self.rob_type = rob_type
         self.use_torch = use_torch
+        self.prey_robot = None
+        self.prey_controller = None
 
         if rob_type == "simulation":
-            self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19997)
-            self.prey_robot = None
-            # self.prey_controller = prey.Prey(robot=prey_robot)
-            self.prey_controller = None
+            self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
+
         elif rob_type == "hardware":
             print("connecting with hardware")
             self.rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.86")
@@ -79,7 +79,7 @@ class PredatorPreyEnv():
 
         if action == 0:
             left , right = 30, 30
-            self.rob.move(left,right,400)
+            self.rob.move(left,right,self.move_ms*1.5)
         elif action == 1:
             left, right = -15, 15
             self.rob.move(left,right,self.move_ms)
@@ -93,15 +93,15 @@ class PredatorPreyEnv():
             reward = self.get_reward()
         else:
             reward = -1
+
         new_s = self.get_state()
-        #print("collected_food", self.n_collected)
+
         print("episode step:", self.step_i)
-        if self.n_collected > 17 or self.step_i > 199:
+        if self.step_i > 199:
             self.step_i = 0
             done = True
         else:
             done = False
-        #print("collected_food done")
 
         self.step_i += 1
         self.state = new_s
@@ -109,18 +109,9 @@ class PredatorPreyEnv():
 
     def get_reward(self):
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            try:
-                new_n_collected = self.rob.collected_food()
-                difference = new_n_collected - self.n_collected
-                self.n_collected = new_n_collected
-                if difference > 0:
-                    #print("Reward: 10")
-                    return 10*difference
-                else:
-                    #print("Reward: -1")
-                    return -1
-            except:
-                return 0
+            print("Position prey", self.prey_robot.position())
+            print("Robot prey", self.rob.position())
+            return 1
         else:
             return Exception("Reward function not possible on hardware")
 
@@ -237,3 +228,4 @@ class PredatorPreyEnv():
     def close(self):
         self.prey_controller.stop()
         self.prey_controller.join()
+        self.rob.stop_world()

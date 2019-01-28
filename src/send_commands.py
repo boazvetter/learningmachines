@@ -20,7 +20,7 @@ import sys
 import copy
 from envs.obstacle_avoidance import ObstacleAvoidanceEnv
 from envs.foraging import ForagingEnv
-from envs.predator_prey import PredatorPreyEnv
+from envs.predator_prey_env import PredatorPreyEnv
 
 import math
 import random
@@ -329,7 +329,8 @@ def main(rob_type="simulation"):
             move_loop(env, Q=Q, n=1000)
     except KeyboardInterrupt:
         if rob_type == "simulation":
-            try: env.rob.stop_world()
+            try:
+                env.close()
             except: pass
         raise SystemExit
 

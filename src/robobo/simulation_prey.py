@@ -42,3 +42,8 @@ class SimulationRoboboPrey(SimulationRobobo):
         self._vrep_read_proximity_sensor_ignore_error(self._IrFrontLFloor)
 
         self.wait_for_ping()
+
+    # def position(self):
+    #     return vrep.unwrap_vrep(
+    #         vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking)
+    #     )
