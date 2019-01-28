@@ -82,7 +82,7 @@ class ForagingEnv():
         elif action == 2:
             left, right = 15, -15
             self.rob.move(left,right,self.move_ms)
-        
+
         time.sleep(0.2)
 
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
@@ -133,8 +133,8 @@ class ForagingEnv():
             hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
             # cv2.imwrite('robotviews/robotview{}-hsv.jpg'.format(testtime), hsv)
             # time.sleep(0.1)
-            minHSV = np.array([45, 70, 20])
-            maxHSV = np.array([94, 255, 255])
+            minHSV = np.array([42, 70, 20])
+            maxHSV = np.array([97, 255, 255])
             mask = cv2.inRange(hsv,minHSV,maxHSV)
 
             # cv2.imwrite('robotviews/robotview{}-mask.jpg'.format(testtime), mask)
