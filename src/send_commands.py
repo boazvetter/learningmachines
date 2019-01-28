@@ -12,25 +12,25 @@ By: Boaz Vetter, Jelle van Mil, Demster Bijl
 
 from __future__ import print_function
 import time
-
-import cv2
+import traceback
 import random
-import numpy as np
 import sys
 import copy
-from envs.obstacle_avoidance import ObstacleAvoidanceEnv
-from envs.foraging import ForagingEnv
-from envs.predator_prey_env import PredatorPreyEnv
-
 import math
 import random
-import numpy as np
 from collections import namedtuple
 from itertools import count
+
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+
+from envs.obstacle_avoidance import ObstacleAvoidanceEnv
+from envs.foraging import ForagingEnv
+from envs.predator_prey_env import PredatorPreyEnv
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -333,6 +333,10 @@ def main(rob_type="simulation"):
                 env.close()
             except: pass
         raise SystemExit
+    except Exception:
+        env.close()
+        traceback.print_exc()
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

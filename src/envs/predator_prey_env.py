@@ -43,7 +43,7 @@ class PredatorPreyEnv():
         After 60 episodes
     """
 
-    def __init__(self, rob_type, use_torch=False, timestep=100):
+    def __init__(self, rob_type, use_torch=False, timestep=200):
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
         self.observation_space = spaces.Discrete(10)
@@ -73,7 +73,7 @@ class PredatorPreyEnv():
 
 
 
-    def step(self, action, as_tensor=False):
+    def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         state = self.state
 
@@ -97,7 +97,7 @@ class PredatorPreyEnv():
         new_s = self.get_state()
 
         print("episode step:", self.step_i)
-        if self.step_i > 199:
+        if self.step_i > 99:
             self.step_i = 0
             done = True
         else:
@@ -109,9 +109,17 @@ class PredatorPreyEnv():
 
     def get_reward(self):
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            print("Position prey", self.prey_robot.position())
-            print("Robot prey", self.rob.position())
-            return 1
+            x_prey, y_prey, _ = self.prey_robot.position()
+            x_pred, y_pred, _ = self.rob.position()
+
+            irs = self.rob.read_irs()
+
+            if abs(x_prey-x_pred) < 0.30 and abs(y_prey-y_pred) < 0.30 and sum(irs[3:]) > 0:
+                print("In range for reward")
+                return 100
+            else:
+                print("No reward")
+                return -1
         else:
             return Exception("Reward function not possible on hardware")
 
@@ -119,7 +127,7 @@ class PredatorPreyEnv():
         if self.rob_type == "simulation":
             # Lower and upper boundary of green
             lower = np.array([0, 0, 0], np.uint8)
-            upper = np.array([50, 255, 50], np.uint8)
+            upper = np.array([50, 50, 255], np.uint8)
 
             # Create a mask for orange
             mask = cv2.inRange(img, lower, upper)
@@ -149,18 +157,9 @@ class PredatorPreyEnv():
         # 6 7 8]
 
         img = self.rob.get_image_front()
-        # img = rgb.copy()
-        # gray = self.mask_img(rgb)
         img = cv2.resize(img,(240,320))
         img = cv2.GaussianBlur(img, (9, 9), 0)
 
-
-
-        # try:
-        #     cv2.imwrite("robotview.png", comb)
-        # except:
-        #     pass
-        #
         greencount = []
         for i in range(3):
             for j in range(3):
@@ -173,8 +172,7 @@ class PredatorPreyEnv():
             s = 9
         else:
             s = greencount.index(max(greencount))
-        #print("greencount", greencount)
-        #print("STATE: ", self.observation_labels[s])
+
         if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
             self.rob.talk(self.observation_labels[s])
         return s
@@ -201,9 +199,9 @@ class PredatorPreyEnv():
 
     def take_super_small_movement(self):
         self.rob.move(1, 1, 500)
-        time.sleep(0.2)
+        time.sleep(0.05)
 
-    def reset(self, as_tensor=False):
+    def reset(self):
         try:
             self.rob.stop_world()
             time.sleep(10)
