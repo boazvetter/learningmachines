@@ -203,6 +203,10 @@ class PredatorPreyEnv():
 
     def reset(self):
         try:
+            self.prey_controller.stop()
+            self.prey_controller.join()
+            self.prey_controller1.stop()
+            self.prey_controller1.join()
             self.rob.stop_world()
             time.sleep(10)
         except:
@@ -212,11 +216,15 @@ class PredatorPreyEnv():
         time.sleep(1)
 
         self.prey_robot = robobo.SimulationRoboboPrey().connect(address=os.environ.get('HOST_IP'), port=19989)
+        self.prey_robot1 = robobo.SimulationRoboboPrey('#1').connect(address=os.environ.get('HOST_IP'), port=19988)
+
         self.prey_controller = prey.Prey(robot=self.prey_robot)
+        self.prey_controller1 = prey.Prey(robot=self.prey_robot1)
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
 
         self.prey_controller.start()
+        self.prey_controller1.start()
 
         return self.get_state()
 
@@ -226,4 +234,6 @@ class PredatorPreyEnv():
     def close(self):
         self.prey_controller.stop()
         self.prey_controller.join()
+        self.prey_controller1.stop()
+        self.prey_controller1.join()
         self.rob.stop_world()
