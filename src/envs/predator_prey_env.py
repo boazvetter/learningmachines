@@ -221,7 +221,7 @@ class PredatorPreyEnv():
                 self.prey_robots[preyname].disconnect()
                 print('stopping prey {}'.format(preyname))
 
-            print("stoppen world")
+            print("stopping world")
             self.rob.stop_world()
         except:
             pass
@@ -230,10 +230,13 @@ class PredatorPreyEnv():
         self.rob.play_simulation()
 
         for preyname, portnumber in self.preys.items():
-            print("initializing prey {}".format(preyname))
-            self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
-            self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname])
-
+            try:
+                print("initializing prey {}".format(preyname))
+                self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
+                self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname])
+            except:
+                print("Error initializing, skipping prey {}".format(preyname))
+                pass
         time.sleep(1)
 
         for preyname, _ in self.preys.items():

@@ -333,11 +333,11 @@ def main(rob_type="simulation"):
                 env.close()
             except: pass
         raise SystemExit
-    except Exception:
-        try:
-            env.close()
-        except: pass
-        traceback.print_exc()
+    # except Exception:
+    #     try:
+    #         env.close()
+    #     except: pass
+    #     traceback.print_exc()
 
 
 if __name__ == "__main__":
