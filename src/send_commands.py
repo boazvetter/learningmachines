@@ -227,7 +227,7 @@ def is_highscore(returns_per_episode):
 def get_epsilon(it, start=1.0):
     return max(0.05, start - it * 0.0009)
 
-def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, epsilon=0.1, Q=None):
+def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, start_epsilon=0.5, Q=None):
     if Q == None:
         Q = np.zeros([env.observation_space.n, env.action_space.n])
 
@@ -242,7 +242,8 @@ def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, epsilon=0.1, Q
         R = 0
         done = False
         while done == False:
-            eps = get_epsilon(global_steps, 0.5)
+            eps = get_epsilon(global_steps, start_epsilon)
+            print("epsilon:", eps)
             #print("Epsilon:", eps)
             a = choose_action(env, s, Q, eps)
             new_s, r, done = env.step(a)
@@ -265,8 +266,10 @@ def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, epsilon=0.1, Q
 
         if is_highscore(stats["episode_returns"]):
             Q_highscore = copy.deepcopy(Q)
-            print("New best Q values:")
-            print(Q_highscore)
+            print("NEW BEST Q VALUES FOUND")
+
+        print("Best Q-values until now:")
+        print(Q_highscore)
 
     return Q_highscore, stats
 

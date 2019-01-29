@@ -1,6 +1,6 @@
 import random
 import threading
-
+import numpy as np
 
 class StoppableThread(threading.Thread):
     """Thread class with a stop() method. The thread itself has to check
@@ -93,6 +93,8 @@ class Prey(StoppableThread):
             raise Exception("Level Value not correct, try from 0 to 4.")
 
         random.seed = self._seed
+
+        self._robot.move(left=-90.0, right=90.0, millis=np.random.random()*1500)
 
         while not self.stopped():
             speed_right = speed_left = maximum_speed
