@@ -7,6 +7,9 @@ import numpy as np
 import torch
 import prey
 
+def current_milli_time():
+    return int(round(time.time() * 1000))
+
 class PredatorPreyEnv():
     """
     Description:
@@ -57,6 +60,8 @@ class PredatorPreyEnv():
         self.preys = {'#0':19989, '#1': 19988}
         self.prey_robots = {}
         self.prey_controllers = {}
+        self.last_time = current_milli_time()
+        self.min_ms_for_loop = 500
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
@@ -80,23 +85,26 @@ class PredatorPreyEnv():
 
         if action == 0:
             left , right = 30, 30
-            self.rob.move(left,right,self.move_ms*1.5)
         elif action == 1:
             left, right = -15, 15
-            self.rob.move(left,right,self.move_ms)
         elif action == 2:
             left, right = 15, -15
-            self.rob.move(left,right,self.move_ms)
+        self.rob.move_continuous(left, right)
 
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             reward = self.get_reward()
         else:
             reward = -1
 
+        loop_time = current_milli_time() - self.last_time
+        difference = self.min_ms_for_loop - loop_time
+        if difference > 0:
+            time.sleep(difference/1000.0)
+        self.last_time = current_milli_time()
+
         new_s = self.get_state()
 
-        print("episode step:", self.step_i)
-        if self.step_i > 49 or reward == 100:
+        if self.step_i > 99 or reward == 100:
             self.step_i = 0
             done = True
         else:
@@ -107,12 +115,12 @@ class PredatorPreyEnv():
         return self.state, reward, done
 
     def get_reward(self):
-        def close_to_prey():
+        def close_to_prey_position():
             close_to_prey = False
             for preyname in self.preys.keys():
                 try:
                     x_prey, y_prey, _ = self.prey_robots[preyname].position()
-                    if abs(x_prey-x_pred) < 0.50 and abs(y_prey-y_pred) < 0.50:
+                    if abs(x_prey-x_pred) < 0.3 and abs(y_prey-y_pred) < 0.3:
                         return True
                 except:
                         close_to_prey = False
@@ -125,11 +133,10 @@ class PredatorPreyEnv():
 
 
             irs = self.rob.read_irs()
-            if sum(irs[3:]) > 0 and close_to_prey() and self.state < 9:
-                print("In range for reward")
+            irs_modified = [ ir > 0 and ir < 0.10 for ir in irs[4:7]]
+            if sum(irs_modified) > 0 and self.state < 9:
                 return 100
             else:
-                print("No reward")
                 return -1
         else:
             return Exception("Reward function not possible on hardware")
@@ -214,33 +221,32 @@ class PredatorPreyEnv():
 
     def reset(self):
 
-        try:
-            for preyname, portnumber in self.preys.items():
-                self.prey_controllers[preyname].stop()
-                self.prey_controllers[preyname].join()
-                self.prey_robots[preyname].disconnect()
-                print('stopping prey {}'.format(preyname))
-
-            print("stoppen world")
-            self.rob.stop_world()
-        except:
-            pass
+        self.close()
 
         print("starting simulation")
         self.rob.play_simulation()
 
         for preyname, portnumber in self.preys.items():
-            print("initializing prey {}".format(preyname))
-            self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
-            self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname])
+            try:
+                print("initializing prey {}".format(preyname))
+                self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
+                self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname], level=np.random.choice([2,3,4]))
+            except:
+                print("Error initializing, skipping prey {}".format(preyname))
+                pass
 
         time.sleep(1)
 
         for preyname, _ in self.preys.items():
-            self.prey_controllers[preyname].start()
+            try:
+                self.prey_controllers[preyname].start()
+            except:
+                pass
 
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
+        self.rob.move(left=-60.0, right=60.0, millis=np.random.random()*1500)
+        time.sleep(0.5)
 
         return self.get_state()
 
@@ -253,8 +259,12 @@ class PredatorPreyEnv():
                 self.prey_controllers[preyname].stop()
                 self.prey_controllers[preyname].join()
                 self.prey_robots[preyname].disconnect()
+                print('stopped prey {}'.format(preyname))
+            print("stoppen world")
             self.rob.stop_world()
-        except: pass
+        except:
+            print("Error in predator_prey_env close method")
+
 
     # def set_random_orientation(self):
     #     x = np.random.uniform(0.5, 0.9)

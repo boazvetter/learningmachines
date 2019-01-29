@@ -168,6 +168,19 @@ class SimulationRobobo(Robobo):
                                                   vrep.simx_opmode_oneshot)
         self.wait_for_ping()
 
+    def move_continuous(self, left, right, millis=100):
+        normalizer = 10.0
+        left = left/normalizer
+        right = right/normalizer
+
+        self._vrep_set_joint_target_velocity(self._LeftMotor, left, vrep.simx_opmode_oneshot)
+        self._vrep_set_joint_target_velocity(self._RightMotor, right, vrep.simx_opmode_oneshot)
+        self.wait_for_ping()
+
+        # duration = millis / 1000.0
+        # time.sleep(duration)
+
+
     def talk(self, message):
         print("ROBOT SAYS: {}".format(message))
 
