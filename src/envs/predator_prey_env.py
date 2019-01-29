@@ -43,19 +43,20 @@ class PredatorPreyEnv():
         After 60 episodes
     """
 
-    def __init__(self, rob_type, use_torch=False, timestep=200):
+    def __init__(self, rob_type, use_torch=False, timestep=200, move_ms=500):
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
         self.observation_space = spaces.Discrete(10)
         self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
         self.state = None
-        self.move_ms = 500 * 100.0/timestep
+        self.move_ms = move_ms * 100.0/timestep
         self.n_collected = 0
         self.step_i = 0
         self.rob_type = rob_type
         self.use_torch = use_torch
-        self.prey_robot = None
-        self.prey_controller = None
+        self.preys = {'#0':19989, '#1': 19988}
+        self.prey_robots = {}
+        self.prey_controllers = {}
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
@@ -97,7 +98,7 @@ class PredatorPreyEnv():
         new_s = self.get_state()
 
         print("episode step:", self.step_i)
-        if self.step_i > 99:
+        if self.step_i > 49 or reward == 100:
             self.step_i = 0
             done = True
         else:
@@ -109,12 +110,21 @@ class PredatorPreyEnv():
 
     def get_reward(self):
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            x_prey, y_prey, _ = self.prey_robot.position()
-            x_pred, y_pred, _ = self.rob.position()
+
+            try: x_pred, y_pred, _ = self.rob.position()
+            except: x_pred, y_pred, _ = [0.0, 0.0, 0.0]
+
+            close_to_prey = False
+            for preyname in self.preys.keys():
+                try:
+                    x_prey, y_prey, _ = self.prey_robots[preyname].position()
+                    if abs(x_prey-x_pred) < 0.50 and abs(y_prey-y_pred) < 0.50:
+                        close_to_prey = True
+                except:
+                    close_to_prey = False
 
             irs = self.rob.read_irs()
-
-            if abs(x_prey-x_pred) < 0.30 and abs(y_prey-y_pred) < 0.30 and sum(irs[3:]) > 0:
+            if close_to_prey and sum(irs[3:]) > 0:
                 print("In range for reward")
                 return 100
             else:
@@ -202,29 +212,34 @@ class PredatorPreyEnv():
         time.sleep(0.05)
 
     def reset(self):
+
         try:
-            self.prey_controller.stop()
-            self.prey_controller.join()
-            self.prey_controller1.stop()
-            self.prey_controller1.join()
+            for preyname, portnumber in self.preys.items():
+                self.prey_controllers[preyname].stop()
+                self.prey_controllers[preyname].join()
+                self.prey_robots[preyname].disconnect()
+                print('stopping prey {}'.format(preyname))
+
+            print("stoppen world")
             self.rob.stop_world()
-            time.sleep(10)
         except:
             pass
 
+        print("starting simulation")
         self.rob.play_simulation()
+
+        for preyname, portnumber in self.preys.items():
+            print("initializing prey {}".format(preyname))
+            self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
+            self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname])
+
         time.sleep(1)
 
-        self.prey_robot = robobo.SimulationRoboboPrey().connect(address=os.environ.get('HOST_IP'), port=19989)
-        self.prey_robot1 = robobo.SimulationRoboboPrey('#1').connect(address=os.environ.get('HOST_IP'), port=19988)
+        for preyname, _ in self.preys.items():
+            self.prey_controllers[preyname].start()
 
-        self.prey_controller = prey.Prey(robot=self.prey_robot)
-        self.prey_controller1 = prey.Prey(robot=self.prey_robot1)
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
-
-        self.prey_controller.start()
-        self.prey_controller1.start()
 
         return self.get_state()
 
@@ -232,8 +247,24 @@ class PredatorPreyEnv():
         pass
 
     def close(self):
-        self.prey_controller.stop()
-        self.prey_controller.join()
-        self.prey_controller1.stop()
-        self.prey_controller1.join()
-        self.rob.stop_world()
+        try:
+            for preyname in self.preys.keys():
+                self.prey_controllers[preyname].stop()
+                self.prey_controllers[preyname].join()
+            self.rob.stop_world()
+        except: pass
+
+    # def set_random_orientation(self):
+    #     x = np.random.uniform(0.5, 0.9)
+    #     self.rob.set_orientation(handle_name='Robobo#0', orientation=(1.57079633, x, 1.57079633))
+
+    # def set_random_position(self):
+    #     # for i in range(0,2):
+    #     xmin = -1.4
+    #     xmax = -0.45
+    #     ymin = -0.9
+    #     ymax = 1
+    #     x = np.random.uniform(xmin, xmax)
+    #     y = np.random.uniform(ymin, ymax)
+    #     z = 0.0372
+    #     self.rob.set_position('Robobo#0', (x, y, z))

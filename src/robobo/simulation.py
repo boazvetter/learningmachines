@@ -35,6 +35,11 @@ class SimulationRobobo(Robobo):
 
         return False
 
+    def disconnect(self):
+            vrep.unwrap_vrep(
+                vrep.simxFinish(self._clientID)
+            )
+
     def initialize_handles(self):
         self._RightMotor = self._vrep_get_object_handle('Right_Motor{}'.format(self._value_number), vrep.simx_opmode_blocking)
         self._LeftMotor = self._vrep_get_object_handle('Left_Motor{}'.format(self._value_number), vrep.simx_opmode_blocking)
@@ -283,12 +288,16 @@ class SimulationRobobo(Robobo):
         vrep.unwrap_vrep(
             vrep.simxStopSimulation(self._clientID, vrep.simx_opmode_blocking)
         )
+        time.sleep(1)
         self.wait_for_ping()
 
+
     def position(self):
-        return vrep.unwrap_vrep(
-            vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking)
+        position = vrep.unwrap_vrep(
+            vrep.simxGetObjectPosition(self._clientID, self._Robobo, -1, vrep.simx_opmode_blocking) #
         )
+        self.wait_for_ping()
+        return position
 
     def collected_food(self):
         ints, floats, strings, buffer = vrep.unwrap_vrep(
@@ -297,6 +306,18 @@ class SimulationRobobo(Robobo):
         )
         self.wait_for_ping()
         return ints[0]
+
+    def set_position(self, handle_name, position):
+        handle = self._vrep_get_object_handle(handle_name, vrep.simx_opmode_blocking)
+        vrep.simxSetObjectPosition(self._clientID, handle, vrep.sim_handle_parent, position, vrep.simx_opmode_blocking)
+        self.wait_for_ping()
+
+    def set_orientation(self, handle_name, orientation):
+
+        # y = np.random.uniform(0, 20)
+
+        handle = self._vrep_get_object_handle(handle_name, vrep.simx_opmode_blocking)
+        vrep.simxSetObjectOrientation(self._clientID, handle, -1, orientation, vrep.simx_opmode_blocking)
 
     def set_food_position(self, food_number):
         if food_number == 0:

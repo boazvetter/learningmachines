@@ -262,9 +262,6 @@ def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, epsilon=0.1, Q
         print("---", stats, "---")
 
         # plot_Q(env, Q)
-        print("Stopping world")
-        env.rob.stop_world()
-        time.sleep(5)
 
         if is_highscore(stats["episode_returns"]):
             Q_highscore = copy.deepcopy(Q)
@@ -309,7 +306,7 @@ def move_loop(env, Q, n=1000):
 
 def main(rob_type="simulation"):
     try:
-        env = PredatorPreyEnv(rob_type, use_torch=False, timestep=200)
+        env = PredatorPreyEnv(rob_type, use_torch=False, timestep=200, move_ms = 800)
         if rob_type == "simulation":
             #Q = [[4.45060120,-2.06225533,-1.81768766],[-1.03861586,1.80691349,-1.91895023],[2.77934013,-1.46312114,-1.84231539],[0.000982035172,0.0296677677,-0.0600853476],[8.76705569,-0.814653054,-0.0799524677],[-0.558391604,-0.548860758,4.51479662],[13.3267505,0.384440106,0.585902213],[15.0547359,0.00000000,0.143453233],[10.47699170,2.80120404,-0.0673019374],[-2.22933065,4.96889182,-2.21165651]]
             stats_multirun = []
@@ -334,7 +331,9 @@ def main(rob_type="simulation"):
             except: pass
         raise SystemExit
     except Exception:
-        env.close()
+        try:
+            env.close()
+        except: pass
         traceback.print_exc()
 
 
