@@ -67,7 +67,7 @@ class PredatorPreyEnv():
             self.rob.talk("Tilting")
             self.rob.set_phone_tilt(106, 50)
             self.rob.set_phone_tilt(109, 5)
-            time.sleep(8)
+            time.sleep(0.5)
 
         else:
             raise Exception('rob_type should be either "simulation" or "hardware"')
@@ -88,8 +88,6 @@ class PredatorPreyEnv():
             left, right = 15, -15
             self.rob.move(left,right,self.move_ms)
 
-        time.sleep(0.2)
-
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             reward = self.get_reward()
         else:
@@ -109,22 +107,25 @@ class PredatorPreyEnv():
         return self.state, reward, done
 
     def get_reward(self):
-        if str(self.rob.__class__.__name__) == "SimulationRobobo":
-
-            try: x_pred, y_pred, _ = self.rob.position()
-            except: x_pred, y_pred, _ = [0.0, 0.0, 0.0]
-
+        def close_to_prey():
             close_to_prey = False
             for preyname in self.preys.keys():
                 try:
                     x_prey, y_prey, _ = self.prey_robots[preyname].position()
                     if abs(x_prey-x_pred) < 0.50 and abs(y_prey-y_pred) < 0.50:
-                        close_to_prey = True
+                        return True
                 except:
-                    close_to_prey = False
+                        close_to_prey = False
+            return False
+
+        if str(self.rob.__class__.__name__) == "SimulationRobobo":
+            try: x_pred, y_pred, _ = self.rob.position()
+            except: x_pred, y_pred, _ = [0.0, 0.0, 0.0]
+
+
 
             irs = self.rob.read_irs()
-            if close_to_prey and sum(irs[3:]) > 0:
+            if sum(irs[3:]) > 0 and close_to_prey() and self.state < 9:
                 print("In range for reward")
                 return 100
             else:
