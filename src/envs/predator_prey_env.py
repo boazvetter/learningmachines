@@ -252,6 +252,7 @@ class PredatorPreyEnv():
             for preyname in self.preys.keys():
                 self.prey_controllers[preyname].stop()
                 self.prey_controllers[preyname].join()
+                self.prey_robots[preyname].disconnect()
             self.rob.stop_world()
         except: pass
 
