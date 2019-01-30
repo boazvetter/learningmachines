@@ -114,18 +114,30 @@ class Prey(StoppableThread):
                     if random.random() <= 0.5:
                         while sum(sensors[3:5]) > 500:
                             self._robot.move(left=-10.0, right=20.0, millis=500)
-                            sensors = self._sensor_better_reading(self._robot.read_irs())
+                            try:
+                                sensors = self._sensor_better_reading(self._robot.read_irs())
+                            except:
+                                break
                     else:
                         while sum(sensors[6:8]) > 500:
                             self._robot.move(left=20.0, right=-10, millis=500)
-                            sensors = self._sensor_better_reading(self._robot.read_irs())
+                            try:
+                                sensors = self._sensor_better_reading(self._robot.read_irs())
+                            except:
+                                break
                 elif index_max_value == 3 or index_max_value == 4:
                     # front right right -> go left
                     while sum(sensors[3:5]) > 500:
                         self._robot.move(left=-10.0, right=20.0, millis=200)
-                        sensors = self._sensor_better_reading(self._robot.read_irs())
+                        try:
+                            sensors = self._sensor_better_reading(self._robot.read_irs())
+                        except:
+                            break
                 elif index_max_value == 7 or index_max_value == 6:
                     # front left left -> go right
                     while sum(sensors[6:8]) > 500:
                         self._robot.move(left=20.0, right=-10.0, millis=200)
-                        sensors = self._sensor_better_reading(self._robot.read_irs())
+                        try:
+                            sensors = self._sensor_better_reading(self._robot.read_irs())
+                        except:
+                            break

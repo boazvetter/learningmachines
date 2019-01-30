@@ -254,16 +254,32 @@ class PredatorPreyEnv():
         pass
 
     def close(self):
-        try:
-            for preyname in self.preys.keys():
+        for preyname in self.preys.keys():
+            print("pausing simulation")
+            self.rob.pause_simulation()
+
+            print('stopping prey'.format(preyname))
+            try:
+                print("self.prey_controllers[preyname].stop()")
                 self.prey_controllers[preyname].stop()
-                self.prey_controllers[preyname].join()
+            except:
+                print("exception in stop")
+
+            try:
+                print("self.prey_controllers[preyname].join()")
+                self.prey_controllers[preyname].join(timeout=7.0)
+                print("Alive:", self.prey_controllers[preyname].isAlive())
+            except:
+                print("Exception in join")
+
+            try:
+                print("self.prey_robots[preyname].disconnect()")
                 self.prey_robots[preyname].disconnect()
-                print('stopped prey {}'.format(preyname))
-            print("stoppen world")
-            self.rob.stop_world()
-        except:
-            print("Error in predator_prey_env close method")
+            except:
+                print("Exception in disconnect")
+
+        print("stoppen world")
+        self.rob.stop_world()
 
 
     # def set_random_orientation(self):
