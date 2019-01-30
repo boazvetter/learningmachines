@@ -219,7 +219,7 @@ class SimulationRobobo(Robobo):
         detectedSurfaceNormalVectorIrFrontL = self._vrep_read_proximity_sensor(
             self._IrFrontL, vrep.simx_opmode_buffer)
 
-        vect = [np.sqrt(detectedPointIrBackR[0]   ** 2 + detectedPointIrBackR[1]   ** 2 + detectedPointIrBackR[2]   ** 2)
+        vect = [np.sqrt(detectedPointIrBackR[0] ** 2 + detectedPointIrBackR[1]   ** 2 + detectedPointIrBackR[2]   ** 2)
                 if detectionStateIrBackR   else False,
                 np.sqrt(detectedPointIrIrBackC[0] ** 2 + detectedPointIrIrBackC[1] ** 2 + detectedPointIrIrBackC[2] ** 2)
                 if detectionStateIrBackC   else False,
@@ -235,7 +235,7 @@ class SimulationRobobo(Robobo):
                 if detectionStateIrFrontL  else False,
                 np.sqrt(detectedPointIrFrontLL[0] ** 2 + detectedPointIrFrontLL[1] ** 2 + detectedPointIrFrontLL[2] ** 2)
                 if detectionStateIrFrontLL else False]
-
+                
         # old_min = 0
         # old_max = 0.20
         # new_min = 18000
