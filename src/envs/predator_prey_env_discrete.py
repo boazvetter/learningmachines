@@ -4,13 +4,13 @@ import os
 import time
 import cv2
 import numpy as np
+import torch
 import prey
-import gym
 
 def current_milli_time():
     return int(round(time.time() * 1000))
 
-class PredatorPreyEnv(gym.Env):
+class PredatorPreyEnv():
     """
     Description:
         A two-wheeled robot (predator) needs to catch the prey.
@@ -47,9 +47,9 @@ class PredatorPreyEnv(gym.Env):
     """
 
     def __init__(self, rob_type, use_torch=False, timestep=200, move_ms=500):
-        self.action_space = spaces.Box(low=np.array([0.0,0.0]), high=np.array([50.0,50.0]), dtype=np.float32) #left, right
-        self.action_labels = ["left", "right"]
-        self.observation_space = spaces.Box(low=np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]), high=np.array([1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0]), dtype=np.float32)
+        self.action_space = spaces.Discrete(3)
+        self.action_labels = ["Driving forward", "Driving left", "Driving right"]
+        self.observation_space = spaces.Discrete(10)
         self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
         self.state = None
         self.move_ms = move_ms * 100.0/timestep
@@ -80,10 +80,16 @@ class PredatorPreyEnv(gym.Env):
 
 
     def step(self, action):
-        # assert self.action_space.contains(action[0])
+        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         state = self.state
 
-        self.rob.move_continuous(action[0], action[1])
+        if action == 0:
+            left , right = 60, 60
+        elif action == 1:
+            left, right = -15, 30
+        elif action == 2:
+            left, right = 30, -15
+        self.rob.move_continuous(left, right)
 
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             reward = self.get_reward()
@@ -128,8 +134,7 @@ class PredatorPreyEnv(gym.Env):
 
             irs = self.rob.read_irs()
             irs_modified = [ ir > 0 and ir < 0.10 for ir in irs[4:7]]
-
-            if sum(irs_modified) > 0 and np.max(self.state) > 20:
+            if sum(irs_modified) > 0 and self.state < 9:
                 return 100
             else:
                 return -1
@@ -181,15 +186,14 @@ class PredatorPreyEnv(gym.Env):
                 sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
                 sub_image = self.mask_img(sub_image)
                 greencount.append(np.count_nonzero(sub_image))
-        # if max(greencount) < 20:
-        #     s = 9
-        # else:
-        #     s = greencount.index(max(greencount))
-        #
+        if max(greencount) < 20:
+            s = 9
+        else:
+            s = greencount.index(max(greencount))
 
         if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
             self.rob.talk(self.observation_labels[s])
-        return np.array(greencount)
+        return s
 
     def get_state_torch(self):
         img = self.rob.get_image_front()
@@ -226,7 +230,7 @@ class PredatorPreyEnv(gym.Env):
             try:
                 print("initializing prey {}".format(preyname))
                 self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
-                self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname], level=3)
+                self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname], level=np.random.choice([2,3,4]))
             except:
                 print("Error initializing, skipping prey {}".format(preyname))
                 pass
@@ -251,23 +255,30 @@ class PredatorPreyEnv(gym.Env):
 
     def close(self):
         for preyname in self.preys.keys():
+            print("pausing simulation")
             self.rob.pause_simulation()
 
+            print('stopping prey'.format(preyname))
             try:
+                print("self.prey_controllers[preyname].stop()")
                 self.prey_controllers[preyname].stop()
             except:
                 print("exception in stop")
 
             try:
+                print("self.prey_controllers[preyname].join()")
                 self.prey_controllers[preyname].join(timeout=7.0)
                 print("Alive:", self.prey_controllers[preyname].isAlive())
             except:
                 print("Exception in join")
 
             try:
+                print("self.prey_robots[preyname].disconnect()")
                 self.prey_robots[preyname].disconnect()
             except:
                 print("Exception in disconnect")
+
+        print("stoppen world")
         self.rob.stop_world()
 
 
