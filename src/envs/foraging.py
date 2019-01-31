@@ -45,8 +45,8 @@ class ForagingEnv():
     def __init__(self, rob_type, use_torch=False, timestep=100):
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
-        self.observation_space = spaces.Discrete(10)
-        self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
+        self.observation_space = spaces.Discrete(12)
+        self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food", "Prey was left", "Prey was Right"]
         self.state = None
         self.move_ms = 500 * 100.0/timestep
         self.n_collected = 0
@@ -92,7 +92,7 @@ class ForagingEnv():
         new_s = self.get_state()
         #print("collected_food", self.n_collected)
         print("episode step:", self.step_i)
-        if self.n_collected > 17 or self.step_i > 199:
+        if self.n_collected > 17 or self.step_i > 99:
             self.step_i = 0
             done = True
         else:
@@ -123,8 +123,8 @@ class ForagingEnv():
     def mask_img(self, img):
         if self.rob_type == "simulation":
             # Lower and upper boundary of green
-            lower = np.array([0, 0, 0], np.uint8)
-            upper = np.array([50, 255, 50], np.uint8)
+            lower = np.array([0, 0, 1], np.uint8)
+            upper = np.array([50, 50, 255], np.uint8)
 
             # Create a mask for orange
             mask = cv2.inRange(img, lower, upper)
@@ -156,16 +156,19 @@ class ForagingEnv():
         img = self.rob.get_image_front()
         # img = rgb.copy()
         # gray = self.mask_img(rgb)
-        img = cv2.resize(img,(240,320))
-        img = cv2.GaussianBlur(img, (9, 9), 0)
+        if str(self.rob.__class__.__name__) == "HardwareRobobo":
+            img = cv2.resize(img,(240,320))
+            img = cv2.GaussianBlur(img, (9, 9), 0)
 
 
 
         # try:
-        #     cv2.imwrite("robotview.png", comb)
+        #     cv2.imwrite("robotview.png", img)
+        #     masked = self.mask_img(img)
+        #     cv2.imwrite("robotviewmasked.png", masked)
         # except:
         #     pass
-        #
+        
         greencount = []
         for i in range(3):
             for j in range(3):
@@ -178,8 +181,15 @@ class ForagingEnv():
             s = 9
         else:
             s = greencount.index(max(greencount))
+
+        if s == 9 and self.state is not None:
+            if self.state == 2 or self.state == 5 or self.state == 8:
+                s = 11
+            elif self.state == 0 or self.state == 3 or self.state == 6:
+                s = 10
+
         #print("greencount", greencount)
-        #print("STATE: ", self.observation_labels[s])
+        print("STATE: ", self.observation_labels[s])
         if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
             self.rob.talk(self.observation_labels[s])
         return s
