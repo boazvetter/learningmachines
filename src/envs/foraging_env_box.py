@@ -4,16 +4,15 @@ import os
 import time
 import cv2
 import numpy as np
-import prey
 import gym
 
 def current_milli_time():
     return int(round(time.time() * 1000))
 
-class PredatorPreyEnv(gym.Env):
+class ForagingEnvBox(gym.Env):
     """
     Description:
-        A two-wheeled robot (predator) needs to catch the prey.
+        A two-wheeled robot needs to perform foraging behaviour; search and eat food
     Source:
         The Learning Machines course (2019) from the Vrije Universiteit Amsterdam.
     Observation:
@@ -46,8 +45,8 @@ class PredatorPreyEnv(gym.Env):
         After 60 episodes
     """
 
-    def __init__(self, rob_type, use_torch=False, timestep=200, move_ms=500):
-        self.action_space = spaces.Box(low=np.array([0.0,0.0]), high=np.array([50.0,50.0]), dtype=np.float32) #left, right
+    def __init__(self, rob_type, use_torch=False, timestep=100, move_ms=500):
+        self.action_space = spaces.Box(low=np.array([5.0,5.0]), high=np.array([25.0,25.0]), dtype=np.float32) #left, right
         self.action_labels = ["left", "right"]
         self.observation_space = spaces.Box(low=np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]), high=np.array([1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0,1000.0]), dtype=np.float32)
         self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
@@ -57,22 +56,18 @@ class PredatorPreyEnv(gym.Env):
         self.step_i = 0
         self.rob_type = rob_type
         self.use_torch = use_torch
-        self.preys = {'#0':19989, '#1': 19988}
-        self.prey_robots = {}
-        self.prey_controllers = {}
         self.last_time = current_milli_time()
         self.min_ms_for_loop = 500
 
         if rob_type == "simulation":
             self.rob = robobo.SimulationRobobo().connect(address=os.environ.get('HOST_IP'), port=19995)
-
         elif rob_type == "hardware":
             print("connecting with hardware")
             self.rob = robobo.HardwareRobobo(camera=True).connect(address="192.168.1.86")
             self.rob.talk("Tilting")
             self.rob.set_phone_tilt(106, 50)
             self.rob.set_phone_tilt(109, 5)
-            time.sleep(0.5)
+            time.sleep(8)
 
         else:
             raise Exception('rob_type should be either "simulation" or "hardware"')
@@ -80,26 +75,28 @@ class PredatorPreyEnv(gym.Env):
 
 
     def step(self, action):
-        # assert self.action_space.contains(action[0])
+        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+
         state = self.state
 
-        print("Action:", action)
-        self.rob.move_continuous(action[0], action[1])
+        if np.random.random() < 0.01:
+            print("Action:", action)
+        # self.rob.move_continuous(action[0], action[1])
+        self.rob.move(action[0], action[1], 500)
 
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
             reward = self.get_reward()
         else:
             reward = -1
 
-        loop_time = current_milli_time() - self.last_time
-        difference = self.min_ms_for_loop - loop_time
-        if difference > 0:
-            time.sleep(difference/1000.0)
-        self.last_time = current_milli_time()
+        # loop_time = current_milli_time() - self.last_time
+        # difference = self.min_ms_for_loop - loop_time
+        # if difference > 0:
+        #     time.sleep(difference/1000.0)
+        # self.last_time = current_milli_time()
 
         new_s = self.get_state()
-
-        if self.step_i > 99 or reward == 100:
+        if self.n_collected > 17 or self.step_i > 99:
             self.step_i = 0
             done = True
         else:
@@ -110,30 +107,19 @@ class PredatorPreyEnv(gym.Env):
         return self.state, reward, done
 
     def get_reward(self):
-        def close_to_prey_position():
-            close_to_prey = False
-            for preyname in self.preys.keys():
-                try:
-                    x_prey, y_prey, _ = self.prey_robots[preyname].position()
-                    if abs(x_prey-x_pred) < 0.3 and abs(y_prey-y_pred) < 0.3:
-                        return True
-                except:
-                        close_to_prey = False
-            return False
-
         if str(self.rob.__class__.__name__) == "SimulationRobobo":
-            try: x_pred, y_pred, _ = self.rob.position()
-            except: x_pred, y_pred, _ = [0.0, 0.0, 0.0]
-
-
-
-            irs = self.rob.read_irs()
-            irs_modified = [ ir > 0 and ir < 0.10 for ir in irs[4:7]]
-
-            if sum(irs_modified) > 0 and np.max(self.state) > 20:
-                return 100
-            else:
-                return -1
+            try:
+                new_n_collected = self.rob.collected_food()
+                difference = new_n_collected - self.n_collected
+                self.n_collected = new_n_collected
+                if difference > 0:
+                    #print("Reward: 10")
+                    return 10*difference
+                else:
+                    #print("Reward: -1")
+                    return -1
+            except:
+                return 0
         else:
             return Exception("Reward function not possible on hardware")
 
@@ -141,7 +127,7 @@ class PredatorPreyEnv(gym.Env):
         if self.rob_type == "simulation":
             # Lower and upper boundary of green
             lower = np.array([0, 0, 0], np.uint8)
-            upper = np.array([50, 50, 255], np.uint8)
+            upper = np.array([50, 255, 50], np.uint8)
 
             # Create a mask for orange
             mask = cv2.inRange(img, lower, upper)
@@ -182,14 +168,10 @@ class PredatorPreyEnv(gym.Env):
                 sub_image = img[int(part_x*i):int(part_x*(i+1)), int(part_y*j):int(part_y*(j+1))]
                 sub_image = self.mask_img(sub_image)
                 greencount.append(np.count_nonzero(sub_image))
-        # if max(greencount) < 20:
-        #     s = 9
-        # else:
-        #     s = greencount.index(max(greencount))
-        #
 
-        # if str(self.rob.__class__.__name__) == "HardwareRobobo" and max(greencount) < 20:
-        #     self.rob.talk(self.observation_labels[s])
+        if np.random.random() < 0.01:
+            print("greencount:", np.array(greencount))
+
         return np.array(greencount)
 
     def get_state_torch(self):
@@ -214,75 +196,30 @@ class PredatorPreyEnv(gym.Env):
 
     def take_super_small_movement(self):
         self.rob.move(1, 1, 500)
-        time.sleep(0.05)
+        time.sleep(0.2)
 
-    def reset(self):
+    def reset(self, reset_positions=True):
+        self.rob.stop_world()
 
-        self.close()
+        if True:
+            for i in range(0,16):
+                try:
+                    # print("Setting position")
+                    self.rob.set_food_position(i)
+                except:
+                    print("Error in setting food position")
+                    pass
 
-        print("starting simulation")
+
+
         self.rob.play_simulation()
-
-        for preyname, portnumber in self.preys.items():
-            try:
-                print("initializing prey {}".format(preyname))
-                self.prey_robots[preyname] = robobo.SimulationRoboboPrey(preyname).connect(address=os.environ.get('HOST_IP'), port=portnumber)
-                self.prey_controllers[preyname] = prey.Prey(robot=self.prey_robots[preyname], level=3)
-            except:
-                print("Error initializing, skipping prey {}".format(preyname))
-                pass
-
         time.sleep(1)
-
-        for preyname, _ in self.preys.items():
-            try:
-                self.prey_controllers[preyname].start()
-            except:
-                pass
-
         self.rob.set_phone_tilt(0.72, 100)
         self.take_super_small_movement()
-        self.rob.move(left=-60.0, right=60.0, millis=np.random.random()*1500)
-        time.sleep(0.5)
-
         return self.get_state()
 
     def render(self, mode='human'):
         pass
 
     def close(self):
-        for preyname in self.preys.keys():
-            self.rob.pause_simulation()
-
-            try:
-                self.prey_controllers[preyname].stop()
-            except:
-                print("exception in stop")
-
-            try:
-                self.prey_controllers[preyname].join(timeout=7.0)
-                print("Alive:", self.prey_controllers[preyname].isAlive())
-            except:
-                print("Exception in join")
-
-            try:
-                self.prey_robots[preyname].disconnect()
-            except:
-                print("Exception in disconnect")
         self.rob.stop_world()
-
-
-    # def set_random_orientation(self):
-    #     x = np.random.uniform(0.5, 0.9)
-    #     self.rob.set_orientation(handle_name='Robobo#0', orientation=(1.57079633, x, 1.57079633))
-
-    # def set_random_position(self):
-    #     # for i in range(0,2):
-    #     xmin = -1.4
-    #     xmax = -0.45
-    #     ymin = -0.9
-    #     ymax = 1
-    #     x = np.random.uniform(xmin, xmax)
-    #     y = np.random.uniform(ymin, ymax)
-    #     z = 0.0372
-    #     self.rob.set_position('Robobo#0', (x, y, z))

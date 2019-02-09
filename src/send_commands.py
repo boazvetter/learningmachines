@@ -25,6 +25,7 @@ import numpy as np
 
 from envs.obstacle_avoidance import ObstacleAvoidanceEnv
 from envs.predator_prey_env import PredatorPreyEnv
+from envs.foraging_env_box import ForagingEnvBox
 from DDPG import DDPG
 
 EPISODE_LENGTH = 300
@@ -58,7 +59,7 @@ def get_epsilon(it, start=1.0):
 def current_milli_time():
     return int(round(time.time() * 1000))
 
-def ddpg_algorithm(env, num_episodes, start_variance=30):
+def ddpg_algorithm(env, num_episodes, start_variance=50, run=0):
     env = env.unwrapped
     # env.seed(1)
 
@@ -75,18 +76,29 @@ def ddpg_algorithm(env, num_episodes, start_variance=30):
     global_steps = 0
 
     for i_episode in range(0,num_episodes):
-        s = env.reset()
+        if i_episode % 10 == 0:
+            s = env.reset(reset_positions=True)
+        else:
+            s = env.reset(reset_positions=False)
         R = 0
         i = 0
         done = False
         while done == False:
             begin_time = current_milli_time()
             if var >= 1:
-                var *= .985  # decay the action randomness
+                var *= .9992  # decay the action randomness
 
             a = ddpg.choose_action(s)
-            a = np.clip(np.random.normal(a, var), 0, 50)    # add randomness to action selection for exploration
-            new_s, r, done = env.step(a)
+
+            if np.random.random() < 0.01:
+                print("predicted action: ", a)
+
+            a = np.clip(np.random.normal(a, var), 5, 25)    # add randomness to action selection for exploration
+            try:
+                new_s, r, done = env.step(a)
+            except:
+                print("error in env.step")
+                continue
 
             ddpg.store_transition(s, a, r / 10, new_s)
 
@@ -99,21 +111,16 @@ def ddpg_algorithm(env, num_episodes, start_variance=30):
             i += 1
 
             q_step_time = current_milli_time() - begin_time
-            if q_step_time < 400 or q_step_time > 600:
-                print('TIME FOR WHOLE Q STEP BIGGER THAN 600: '.format(q_step_time))
+
 
         stats["episode_returns"].append(R)
         stats["episode_lengths"].append(i)
         print("---", stats, "---")
 
         if is_highscore(stats["episode_returns"]):
-            print("NEW BEST MODEL FOUND")
+            ddpg.save_model("best" + str(run))
 
-        print("Saving best model until now")
-        ddpg.save_model("best")
-
-        print("Saving last model")
-        ddpg.save_model("last")
+        ddpg.save_model("last" + str(run))
 
     return stats
 
@@ -156,8 +163,8 @@ def q_learning(env, num_episodes, discount_factor=0.9, alpha=0.1, start_epsilon=
             global_steps += 1
 
             q_step_time = current_milli_time() - begin_time
-            if q_step_time < 400 or q_step_time > 600:
-                print('TIME FOR WHOLE Q STEP BIGGER THAN 600: '.format(q_step_time))
+            # if q_step_time < 400 or q_step_time > 600:
+            #     print('TIME FOR WHOLE Q STEP BIGGER THAN 600: '.format(q_step_time))
 
         stats["episode_returns"].append(R)
         stats["episode_lengths"].append(i)
@@ -186,13 +193,15 @@ def move_loop(env, Q, n=1000):
 
 def main(rob_type="simulation"):
     try:
-        env = PredatorPreyEnv(rob_type, use_torch=False, timestep=200, move_ms = 800)
+        env = ForagingEnvBox(rob_type, use_torch=False, timestep=200)
         if rob_type == "simulation":
             stats_multirun = []
             for i in range(5):
-                stats = ddpg_algorithm(env, num_episodes=250)
+                print("---------- RUN: ", i, "--------")
+                stats = ddpg_algorithm(env, num_episodes=50, run=0)
                 stats_multirun.append(stats)
                 print("Appended stats of run", i)
+                print("Final stats:", stats_multirun)
             print("Final stats:", stats_multirun)
             env.close()
         elif rob_type == "hardware":

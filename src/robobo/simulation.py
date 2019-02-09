@@ -347,4 +347,14 @@ class SimulationRobobo(Robobo):
         vrep.simxSetObjectPosition(self._clientID, food, -1, (x, y, 0.05), vrep.simx_opmode_blocking)
         time.sleep(0.1)
         vrep.simxSetObjectPosition(self._clientID, food, -1, (x, y, 0.05), vrep.simx_opmode_blocking)
+
+        rob_position = self.position()
+
+        food_position = vrep.unwrap_vrep(
+            vrep.simxGetObjectPosition(self._clientID, food, -1, vrep.simx_opmode_blocking) #
+        )
+
+        if abs(rob_position[0] - food_position[0]) < 0.2 and abs(rob_position[1] - food_position[1]) < 0.2:
+            self.set_food_position(food_number)
+
         self.wait_for_ping()
