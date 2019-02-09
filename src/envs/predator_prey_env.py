@@ -49,8 +49,8 @@ class PredatorPreyEnv():
     def __init__(self, rob_type, use_torch=False, timestep=200, move_ms=500):
         self.action_space = spaces.Discrete(3)
         self.action_labels = ["Driving forward", "Driving left", "Driving right"]
-        self.observation_space = spaces.Discrete(10)
-        self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Food"]
+        self.observation_space = spaces.Discrete(12)
+        self.observation_labels = ["Top Left", "Top Center", "Top Right", "Middle Left", "Middle Center", "Middle Right", "Bottom Left", "Bottom Center", "Bottom Right", "No Prey", "Prey was left", "Prey was Right"]
         self.state = None
         self.move_ms = move_ms * 100.0/timestep
         self.n_collected = 0
@@ -173,7 +173,11 @@ class PredatorPreyEnv():
         #[0 1 2
         # 3 4 5
         # 6 7 8]
-
+        try:
+            print("s_prev = ", self.observation_labels[self.state])
+        except:
+            print("s_prev = None")
+            pass
         img = self.rob.get_image_front()
         img = cv2.resize(img,(240,320))
         img = cv2.GaussianBlur(img, (9, 9), 0)
@@ -191,8 +195,17 @@ class PredatorPreyEnv():
         else:
             s = greencount.index(max(greencount))
 
+        if s == 9 and self.state is not None:
+            if self.state == 2 or self.state == 5 or self.state == 8:
+                s = 11
+            elif self.state == 0 or self.state == 3 or self.state == 6:
+                s = 10
+
         if str(self.rob.__class__.__name__) == "HardwareRobobo" and s < 9:
             self.rob.talk(self.observation_labels[s])
+
+        print(self.observation_labels[s])
+
         return s
 
     def get_state_torch(self):
